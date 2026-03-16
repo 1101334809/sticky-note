@@ -1,0 +1,885 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Electron 图片工具库 - 原型</title>
+    <meta name="prototype-name" content="Electron 图片工具库" />
+    <meta name="prototype-iteration" content="2026-03-Electron工具库" />
+    <meta name="prototype-author" content="—" />
+    <meta name="prototype-created" content="2026-03-16" />
+    <meta name="prototype-updated" content="2026-03-16" />
+    <meta
+      name="prototype-description"
+      content="前端开发者一站式离线图片处理工具库，含SVG查看、图片压缩、格式转换"
+    />
+    <style>
+      /* ============ 基础重置 ============ */
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+          "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+        line-height: 1.6;
+        color: #333;
+        background: #1a1a2e;
+        min-height: 100vh;
+        display: flex;
+      }
+
+      /* ============ 侧栏 ============ */
+      .sidebar {
+        width: 220px;
+        background: #16213e;
+        min-height: 100vh;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        flex-shrink: 0;
+      }
+      .sidebar .logo {
+        padding: 24px 20px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .sidebar .logo span.icon {
+        font-size: 1.6em;
+      }
+      .sidebar .logo span.text {
+        font-size: 1em;
+        font-weight: 700;
+        color: #fff;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      .sidebar nav {
+        flex: 1;
+        padding: 12px 0;
+      }
+      .sidebar nav a {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 20px;
+        color: rgba(255, 255, 255, 0.5);
+        text-decoration: none;
+        font-size: 0.9em;
+        transition: all 0.2s;
+        border-left: 3px solid transparent;
+      }
+      .sidebar nav a:hover {
+        color: rgba(255, 255, 255, 0.8);
+        background: rgba(255, 255, 255, 0.03);
+      }
+      .sidebar nav a.active {
+        color: #fff;
+        background: rgba(102, 126, 234, 0.12);
+        border-left-color: #667eea;
+      }
+      .sidebar nav a .nav-icon {
+        font-size: 1.2em;
+        width: 24px;
+        text-align: center;
+      }
+
+      /* ============ 主内容区 ============ */
+      .main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      .topbar {
+        height: 56px;
+        background: #1e2a4a;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 24px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      }
+      .topbar h2 {
+        color: #fff;
+        font-size: 1.1em;
+        font-weight: 600;
+      }
+      .topbar .actions {
+        display: flex;
+        gap: 8px;
+      }
+
+      .content {
+        flex: 1;
+        padding: 24px;
+        overflow-y: auto;
+        background: #0f1123;
+      }
+
+      /* ============ Tab 页面 ============ */
+      .tab-page {
+        display: none;
+        animation: fadeIn 0.3s ease;
+      }
+      .tab-page.active {
+        display: block;
+      }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(8px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      /* ============ 通用组件 ============ */
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 16px;
+        border: none;
+        border-radius: 8px;
+        font-size: 0.85em;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .btn-primary {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: #fff;
+      }
+      .btn-primary:hover {
+        opacity: 0.9;
+        transform: translateY(-1px);
+      }
+      .btn-secondary {
+        background: rgba(255, 255, 255, 0.08);
+        color: #ccc;
+      }
+      .btn-secondary:hover {
+        background: rgba(255, 255, 255, 0.14);
+      }
+      .btn-sm {
+        padding: 6px 12px;
+        font-size: 0.8em;
+      }
+      .btn-icon {
+        width: 36px;
+        height: 36px;
+        padding: 0;
+        justify-content: center;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.06);
+        color: #aaa;
+        border: none;
+        cursor: pointer;
+      }
+      .btn-icon:hover {
+        background: rgba(255, 255, 255, 0.12);
+        color: #fff;
+      }
+      .btn-icon.active {
+        background: rgba(102, 126, 234, 0.2);
+        color: #667eea;
+      }
+
+      .card {
+        background: #16213e;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.06);
+      }
+
+      .badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-size: 0.75em;
+        font-weight: 500;
+      }
+      .badge-success {
+        background: rgba(76, 175, 80, 0.15);
+        color: #4caf50;
+      }
+      .badge-warning {
+        background: rgba(255, 152, 0, 0.15);
+        color: #ff9800;
+      }
+      .badge-info {
+        background: rgba(102, 126, 234, 0.15);
+        color: #667eea;
+      }
+
+      input[type="text"],
+      input[type="search"],
+      select {
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: #fff;
+        padding: 8px 12px;
+        border-radius: 8px;
+        font-size: 0.85em;
+        outline: none;
+        transition: border-color 0.2s;
+      }
+      input:focus,
+      select:focus {
+        border-color: #667eea;
+      }
+      input::placeholder {
+        color: rgba(255, 255, 255, 0.3);
+      }
+
+      /* ============ 拖拽区域 ============ */
+      .drop-zone {
+        border: 2px dashed rgba(102, 126, 234, 0.3);
+        border-radius: 12px;
+        padding: 48px 24px;
+        text-align: center;
+        color: rgba(255, 255, 255, 0.4);
+        transition: all 0.3s;
+        cursor: pointer;
+      }
+      .drop-zone:hover,
+      .drop-zone.drag-over {
+        border-color: #667eea;
+        background: rgba(102, 126, 234, 0.05);
+        color: rgba(255, 255, 255, 0.7);
+      }
+      .drop-zone .icon {
+        font-size: 2.5em;
+        margin-bottom: 12px;
+      }
+      .drop-zone p {
+        font-size: 0.9em;
+      }
+      .drop-zone .hint {
+        font-size: 0.8em;
+        margin-top: 8px;
+        opacity: 0.6;
+      }
+
+      /* ============ 进度条 ============ */
+      .progress-bar {
+        height: 4px;
+        background: rgba(255, 255, 255, 0.06);
+        border-radius: 2px;
+        overflow: hidden;
+      }
+      .progress-bar .fill {
+        height: 100%;
+        background: linear-gradient(90deg, #667eea, #764ba2);
+        border-radius: 2px;
+        transition: width 0.3s;
+      }
+
+      /* ============ 工具栏 ============ */
+      .toolbar {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 16px;
+        flex-wrap: wrap;
+      }
+      .toolbar .spacer {
+        flex: 1;
+      }
+
+      /* ============ 色板小方块 ============ */
+      .color-swatch {
+        width: 28px;
+        height: 28px;
+        border-radius: 6px;
+        border: 2px solid transparent;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .color-swatch:hover,
+      .color-swatch.active {
+        border-color: #fff;
+        transform: scale(1.15);
+      }
+
+      /* ============ Toast 提示 ============ */
+      .toast {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 12px 20px;
+        background: #16213e;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+        color: #fff;
+        font-size: 0.85em;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        z-index: 1000;
+        transform: translateX(120%);
+        transition: transform 0.3s ease;
+      }
+      .toast.show {
+        transform: translateX(0);
+      }
+
+      /* ============ 响应式 ============ */
+      @media (max-width: 768px) {
+        .sidebar {
+          width: 60px;
+        }
+        .sidebar .logo span.text,
+        .sidebar nav a span:not(.nav-icon) {
+          display: none;
+        }
+        .sidebar .logo {
+          justify-content: center;
+          padding: 16px 0;
+        }
+        .content {
+          padding: 16px;
+        }
+      }
+
+      /* ===== SVG 查看器相关 ===== */
+      .svg-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+        gap: 12px;
+      }
+      .svg-item {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 10px;
+        padding: 16px 8px 10px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s;
+        position: relative;
+      }
+      .svg-item:hover {
+        background: rgba(102, 126, 234, 0.1);
+        border-color: rgba(102, 126, 234, 0.3);
+        transform: translateY(-2px);
+      }
+      .svg-item.selected {
+        border-color: #667eea;
+        background: rgba(102, 126, 234, 0.12);
+      }
+      .svg-item svg,
+      .svg-item .svg-preview {
+        width: 48px;
+        height: 48px;
+        margin: 0 auto 8px;
+        display: block;
+      }
+      .svg-item .name {
+        font-size: 0.7em;
+        color: rgba(255, 255, 255, 0.5);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .svg-item .check {
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: #667eea;
+        color: #fff;
+        font-size: 0.65em;
+        display: none;
+        align-items: center;
+        justify-content: center;
+      }
+      .svg-item.selected .check {
+        display: flex;
+      }
+
+      .svg-list-view {
+        display: none;
+      }
+      .svg-list-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 16px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        transition: background 0.15s;
+      }
+      .svg-list-row:hover {
+        background: rgba(255, 255, 255, 0.03);
+      }
+      .svg-list-row svg {
+        width: 32px;
+        height: 32px;
+        flex-shrink: 0;
+      }
+      .svg-list-row .info {
+        flex: 1;
+      }
+      .svg-list-row .info .fname {
+        color: #ddd;
+        font-size: 0.85em;
+      }
+      .svg-list-row .info .fsize {
+        color: rgba(255, 255, 255, 0.35);
+        font-size: 0.75em;
+      }
+
+      /* ===== 图片压缩相关 ===== */
+      .file-list {
+        margin-top: 16px;
+      }
+      .file-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 16px;
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 8px;
+        margin-bottom: 8px;
+      }
+      .file-row .thumb {
+        width: 40px;
+        height: 40px;
+        border-radius: 6px;
+        background: rgba(255, 255, 255, 0.08);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2em;
+        flex-shrink: 0;
+      }
+      .file-row .file-info {
+        flex: 1;
+      }
+      .file-row .file-info .fname {
+        color: #ddd;
+        font-size: 0.85em;
+      }
+      .file-row .file-info .fmeta {
+        color: rgba(255, 255, 255, 0.35);
+        font-size: 0.75em;
+      }
+      .file-row .result {
+        text-align: right;
+      }
+      .file-row .result .saved {
+        color: #4caf50;
+        font-size: 0.8em;
+        font-weight: 600;
+      }
+
+      .compare-panel {
+        display: none;
+        background: #16213e;
+        border-radius: 12px;
+        padding: 20px;
+        margin-top: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.06);
+      }
+      .compare-panel.show {
+        display: block;
+      }
+      .compare-images {
+        display: flex;
+        gap: 16px;
+      }
+      .compare-images .side {
+        flex: 1;
+        text-align: center;
+      }
+      .compare-images .side .label {
+        color: rgba(255, 255, 255, 0.5);
+        font-size: 0.8em;
+        margin-bottom: 8px;
+      }
+      .compare-images .side .img-box {
+        background: rgba(255, 255, 255, 0.04);
+        border-radius: 8px;
+        padding: 24px;
+        min-height: 160px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2em;
+      }
+      .compare-images .side .size {
+        color: #aaa;
+        font-size: 0.8em;
+        margin-top: 8px;
+      }
+
+      /* ===== 格式转换相关 ===== */
+      .convert-options {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 16px;
+        margin-top: 16px;
+      }
+      .option-card {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 10px;
+        padding: 16px;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .option-card:hover {
+        border-color: rgba(102, 126, 234, 0.3);
+      }
+      .option-card.selected {
+        border-color: #667eea;
+        background: rgba(102, 126, 234, 0.08);
+      }
+      .option-card .opt-title {
+        color: #ddd;
+        font-size: 0.9em;
+        font-weight: 600;
+        margin-bottom: 4px;
+      }
+      .option-card .opt-desc {
+        color: rgba(255, 255, 255, 0.4);
+        font-size: 0.75em;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- 侧栏 -->
+    <div class="sidebar">
+      <div class="logo">
+        <span class="icon">🧰</span>
+        <span class="text">ImageKit</span>
+      </div>
+      <nav>
+        <a href="#" class="active" data-tab="svg">
+          <span class="nav-icon">🎨</span>
+          <span>SVG 查看</span>
+        </a>
+        <a href="#" data-tab="compress">
+          <span class="nav-icon">📦</span>
+          <span>图片压缩</span>
+        </a>
+        <a href="#" data-tab="convert">
+          <span class="nav-icon">🔄</span>
+          <span>格式转换</span>
+        </a>
+      </nav>
+    </div>
+
+    <!-- 主内容 -->
+    <div class="main">
+      <div class="topbar">
+        <h2 id="topbar-title">SVG 批量查看</h2>
+        <div class="actions">
+          <button class="btn btn-secondary btn-sm" onclick="toggleTheme()">
+            🌙 暗色
+          </button>
+        </div>
+      </div>
+
+      <div class="content">
+        <!-- Tab 1: SVG 查看 -->
+        <div class="tab-page active" id="tab-svg">
+          <div class="toolbar">
+            <input type="search" id="svg-search" placeholder="🔍 搜索 SVG 文件名…" style="width:220px" oninput="filterSvg()">
+            <div class="spacer"></div>
+            <button class="btn-icon active" id="btn-grid" onclick="setSvgView('grid')" title="宫格视图">▦</button>
+            <button class="btn-icon" id="btn-list" onclick="setSvgView('list')" title="列表视图">☰</button>
+            <span style="width:1px;height:24px;background:rgba(255,255,255,0.1);display:inline-block"></span>
+            <input type="color" id="svg-color" value="#667eea" title="选择颜色" style="width:32px;height:32px;border:none;background:none;cursor:pointer">
+            <button class="btn btn-secondary btn-sm" onclick="applySvgColor()">🎨 改色</button>
+            <button class="btn btn-primary btn-sm" onclick="exportSvg()">⬇ 导出 PNG</button>
+          </div>
+          <div class="drop-zone" id="svg-drop" onclick="loadDemoSvg()">
+            <div class="icon">📂</div>
+            <p>拖拽 SVG 文件 / 文件夹到此处</p>
+            <p class="hint">或点击选择文件（原型演示将加载示例数据）</p>
+          </div>
+          <div class="svg-grid" id="svg-grid" style="display:none"></div>
+          <div class="svg-list-view card" id="svg-list" style="display:none"></div>
+        </div>
+
+        <!-- Tab 2: 图片压缩 -->
+        <div class="tab-page" id="tab-compress">
+          <div class="toolbar">
+            <select id="compress-mode" style="width:160px">
+              <option value="smart">🤖 智能推荐</option>
+              <option value="lossy">📉 有损压缩</option>
+              <option value="lossless">🔒 无损压缩</option>
+            </select>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="color:#aaa;font-size:0.8em">质量</span>
+              <input type="range" id="quality-slider" min="1" max="100" value="80" style="width:120px" oninput="document.getElementById('q-val').textContent=this.value+'%'">
+              <span id="q-val" style="color:#fff;font-size:0.8em;min-width:36px">80%</span>
+            </div>
+            <div class="spacer"></div>
+            <button class="btn btn-primary btn-sm" onclick="startCompress()">🚀 开始压缩</button>
+          </div>
+          <div class="drop-zone" id="compress-drop" onclick="loadDemoCompress()">
+            <div class="icon">🖼️</div>
+            <p>拖拽图片文件到此处进行压缩</p>
+            <p class="hint">支持 JPEG / PNG / WebP / GIF / AVIF / TIFF</p>
+          </div>
+          <div class="file-list" id="compress-list" style="display:none"></div>
+          <div class="compare-panel" id="compare-panel">
+            <h3 style="color:#fff;font-size:0.9em;margin-bottom:12px">压缩前后对比</h3>
+            <div class="compare-images">
+              <div class="side">
+                <div class="label">原图</div>
+                <div class="img-box">🖼️</div>
+                <div class="size" id="orig-size">2.4 MB</div>
+              </div>
+              <div class="side">
+                <div class="label">压缩后</div>
+                <div class="img-box" style="opacity:0.85">🖼️</div>
+                <div class="size" id="comp-size" style="color:#4caf50">0.8 MB (-67%)</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 3: 格式转换 -->
+        <div class="tab-page" id="tab-convert">
+          <div class="toolbar">
+            <span style="color:#aaa;font-size:0.85em">目标格式：</span>
+            <select id="target-format" style="width:130px">
+              <option>WebP</option><option>PNG</option><option>JPEG</option>
+              <option>AVIF</option><option>BMP</option><option>ICO</option><option>TIFF</option>
+            </select>
+            <select id="preset-size" style="width:160px">
+              <option value="">保持原尺寸</option>
+              <option value="16">Favicon 16×16</option>
+              <option value="32">Favicon 32×32</option>
+              <option value="64">Icon 64×64</option>
+              <option value="128">Icon 128×128</option>
+              <option value="256">Icon 256×256</option>
+              <option value="512">App Icon 512×512</option>
+              <option value="1024">App Icon 1024×1024</option>
+            </select>
+            <div class="spacer"></div>
+            <button class="btn btn-primary btn-sm" onclick="startConvert()">🔄 开始转换</button>
+          </div>
+          <div class="drop-zone" id="convert-drop" onclick="loadDemoConvert()">
+            <div class="icon">🔄</div>
+            <p>拖拽图片文件到此处进行格式转换</p>
+            <p class="hint">支持所有主流图片格式互转 · 批量处理</p>
+          </div>
+          <div class="convert-options" id="convert-formats" style="display:none">
+            <div class="option-card selected" onclick="selectFormat(this)">
+              <div class="opt-title">📄 WebP</div>
+              <div class="opt-desc">高压缩率，现代Web首选</div>
+            </div>
+            <div class="option-card" onclick="selectFormat(this)">
+              <div class="opt-title">🖼️ PNG</div>
+              <div class="opt-desc">无损透明，适合图标</div>
+            </div>
+            <div class="option-card" onclick="selectFormat(this)">
+              <div class="opt-title">📸 JPEG</div>
+              <div class="opt-desc">照片首选，兼容性最佳</div>
+            </div>
+            <div class="option-card" onclick="selectFormat(this)">
+              <div class="opt-title">⚡ AVIF</div>
+              <div class="opt-desc">新一代格式，极致压缩</div>
+            </div>
+            <div class="option-card" onclick="selectFormat(this)">
+              <div class="opt-title">🎯 ICO</div>
+              <div class="opt-desc">图标格式，多尺寸嵌入</div>
+            </div>
+            <div class="option-card" onclick="selectFormat(this)">
+              <div class="opt-title">🎞️ TIFF</div>
+              <div class="opt-desc">高质量，印刷用途</div>
+            </div>
+          </div>
+          <div class="file-list" id="convert-list" style="display:none"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+      /* ============ Tab 切换 ============ */
+      var navLinks = document.querySelectorAll('.sidebar nav a');
+      var tabPages = document.querySelectorAll('.tab-page');
+      var topTitle = document.getElementById('topbar-title');
+      var titles = { svg: 'SVG 批量查看', compress: '图片压缩', convert: '格式转换' };
+      navLinks.forEach(function(link) {
+        link.addEventListener('click', function(e) {
+          e.preventDefault();
+          var tab = link.dataset.tab;
+          navLinks.forEach(function(l) { l.classList.remove('active'); });
+          link.classList.add('active');
+          tabPages.forEach(function(p) { p.classList.remove('active'); });
+          document.getElementById('tab-' + tab).classList.add('active');
+          topTitle.textContent = titles[tab] || '';
+        });
+      });
+
+      /* ============ Toast ============ */
+      function showToast(msg) {
+        var t = document.getElementById('toast');
+        t.textContent = msg; t.classList.add('show');
+        setTimeout(function() { t.classList.remove('show'); }, 2000);
+      }
+      function toggleTheme() { showToast('主题切换功能开发中…'); }
+
+      /* ============ SVG 模块 ============ */
+      var svgNames = ['arrow-left','arrow-right','check-circle','close','download','edit','eye','file','folder','heart','home','image','link','lock','mail','menu','plus','search','settings','star','trash','upload','user','video'];
+      var svgLoaded = false, svgView = 'grid', svgSelected = [];
+      var svgShapes = [
+        '<circle cx="12" cy="12" r="8"/>',
+        '<rect x="4" y="4" width="16" height="16" rx="2"/>',
+        '<polygon points="12,2 22,20 2,20"/>',
+        '<path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>',
+        '<path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 000-7.78z"/>',
+        '<path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>'
+      ];
+      function makeSvgStr(color, idx) {
+        var s = svgShapes[idx % svgShapes.length];
+        return '<svg viewBox="0 0 24 24" fill="none" stroke="'+(color||'#667eea')+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">'+s+'</svg>';
+      }
+      function loadDemoSvg() {
+        if (svgLoaded) return;
+        svgLoaded = true;
+        document.getElementById('svg-drop').style.display = 'none';
+        renderSvgGrid('#667eea');
+        showToast('已加载 '+svgNames.length+' 个示例 SVG');
+      }
+      function renderSvgGrid(color) {
+        var g = document.getElementById('svg-grid');
+        var l = document.getElementById('svg-list');
+        g.innerHTML = ''; l.innerHTML = '';
+        svgNames.forEach(function(name, i) {
+          // grid item
+          var d = document.createElement('div');
+          d.className = 'svg-item'; d.dataset.name = name; d.dataset.idx = i;
+          d.innerHTML = makeSvgStr(color, i) + '<div class="name">'+name+'.svg</div><div class="check">✓</div>';
+          d.onclick = function() { toggleSvgSelect(d, i); };
+          g.appendChild(d);
+          // list item
+          var r = document.createElement('div');
+          r.className = 'svg-list-row'; r.dataset.name = name;
+          r.innerHTML = makeSvgStr(color, i) + '<div class="info"><div class="fname">'+name+'.svg</div><div class="fsize">'+(0.5+Math.random()*3).toFixed(1)+' KB</div></div>';
+          l.appendChild(r);
+        });
+        g.style.display = (svgView === 'grid') ? 'grid' : 'none';
+        l.style.display = (svgView === 'list') ? 'block' : 'none';
+      }
+      function toggleSvgSelect(el, idx) {
+        el.classList.toggle('selected');
+        var i = svgSelected.indexOf(idx);
+        if (i > -1) svgSelected.splice(i, 1); else svgSelected.push(idx);
+      }
+      function setSvgView(v) {
+        svgView = v;
+        document.getElementById('btn-grid').classList.toggle('active', v === 'grid');
+        document.getElementById('btn-list').classList.toggle('active', v === 'list');
+        if (svgLoaded) {
+          document.getElementById('svg-grid').style.display = (v === 'grid') ? 'grid' : 'none';
+          document.getElementById('svg-list').style.display = (v === 'list') ? 'block' : 'none';
+        }
+      }
+      function filterSvg() {
+        var q = document.getElementById('svg-search').value.toLowerCase();
+        document.querySelectorAll('.svg-item').forEach(function(el) { el.style.display = el.dataset.name.includes(q) ? '' : 'none'; });
+        document.querySelectorAll('.svg-list-row').forEach(function(el) { el.style.display = el.dataset.name.includes(q) ? '' : 'none'; });
+      }
+      function applySvgColor() {
+        if (!svgLoaded) { showToast('请先加载 SVG 文件'); return; }
+        var c = document.getElementById('svg-color').value;
+        if (svgSelected.length === 0) { renderSvgGrid(c); showToast('已对全部 SVG 应用颜色 ' + c); }
+        else { renderSvgGrid(c); showToast('已对 '+svgSelected.length+' 个 SVG 应用颜色 ' + c); }
+      }
+      function exportSvg() {
+        if (!svgLoaded) { showToast('请先加载 SVG 文件'); return; }
+        showToast('✅ 已导出 ' + (svgSelected.length || svgNames.length) + ' 个 SVG 为 PNG @1x @2x @3x');
+      }
+
+      /* ============ 图片压缩模块 ============ */
+      var compressLoaded = false;
+      var compressFiles = [
+        {name:'banner.jpg', type:'JPEG', size:'2.4 MB', saved:67},
+        {name:'logo.png', type:'PNG', size:'1.8 MB', saved:45},
+        {name:'hero.webp', type:'WebP', size:'3.1 MB', saved:58},
+        {name:'icon.gif', type:'GIF', size:'0.9 MB', saved:32},
+        {name:'bg-pattern.png', type:'PNG', size:'5.2 MB', saved:71}
+      ];
+      function loadDemoCompress() {
+        if (compressLoaded) return;
+        compressLoaded = true;
+        document.getElementById('compress-drop').style.display = 'none';
+        var list = document.getElementById('compress-list');
+        list.style.display = 'block';
+        list.innerHTML = compressFiles.map(function(f) {
+          return '<div class="file-row"><div class="thumb">🖼️</div><div class="file-info"><div class="fname">'+f.name+'</div><div class="fmeta">'+f.type+' · '+f.size+'</div></div><div class="result"><span class="badge badge-info">待处理</span></div></div>';
+        }).join('');
+        showToast('已加载 '+compressFiles.length+' 个示例图片');
+      }
+      function startCompress() {
+        if (!compressLoaded) { showToast('请先添加图片文件'); return; }
+        var rows = document.querySelectorAll('#compress-list .file-row');
+        rows.forEach(function(row, i) {
+          setTimeout(function() {
+            var saved = compressFiles[i].saved;
+            row.querySelector('.result').innerHTML = '<span class="saved">-'+saved+'%</span>';
+          }, (i + 1) * 400);
+        });
+        setTimeout(function() {
+          document.getElementById('compare-panel').classList.add('show');
+          showToast('✅ 压缩完成！平均节省 54.6%');
+        }, (rows.length + 1) * 400);
+      }
+
+      /* ============ 格式转换模块 ============ */
+      var convertLoaded = false;
+      var convertFiles = [
+        {name:'photo1.jpg', size:'3.2 MB'}, {name:'photo2.png', size:'2.1 MB'},
+        {name:'icon.bmp', size:'1.5 MB'}, {name:'texture.tiff', size:'4.8 MB'}
+      ];
+      function selectFormat(el) {
+        document.querySelectorAll('.option-card').forEach(function(c) { c.classList.remove('selected'); });
+        el.classList.add('selected');
+      }
+      function loadDemoConvert() {
+        if (convertLoaded) return;
+        convertLoaded = true;
+        document.getElementById('convert-drop').style.display = 'none';
+        document.getElementById('convert-formats').style.display = 'grid';
+        var list = document.getElementById('convert-list');
+        list.style.display = 'block';
+        list.innerHTML = convertFiles.map(function(f) {
+          return '<div class="file-row"><div class="thumb">📄</div><div class="file-info"><div class="fname">'+f.name+'</div><div class="fmeta">'+f.size+'</div></div><div class="result"><span class="badge badge-info">待转换</span></div></div>';
+        }).join('');
+        showToast('已加载 '+convertFiles.length+' 个示例图片');
+      }
+      function startConvert() {
+        if (!convertLoaded) { showToast('请先添加图片文件'); return; }
+        var fmt = document.getElementById('target-format').value;
+        var rows = document.querySelectorAll('#convert-list .file-row');
+        rows.forEach(function(row, i) {
+          setTimeout(function() {
+            row.querySelector('.result').innerHTML = '<span class="badge badge-success">→ .'+fmt.toLowerCase()+'</span>';
+            row.querySelector('.fname').textContent = convertFiles[i].name.replace(/\.\w+$/, '.'+fmt.toLowerCase());
+          }, (i + 1) * 300);
+        });
+        setTimeout(function() {
+          showToast('✅ 转换完成！'+rows.length+' 个文件已转为 '+fmt);
+        }, (rows.length + 1) * 300);
+      }
+
+      console.log('原型加载完成');
+    </script>
+  </body>
+</html>
