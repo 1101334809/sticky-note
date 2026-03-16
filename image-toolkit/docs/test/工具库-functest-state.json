@@ -1,0 +1,66 @@
+{
+  "feature": "图片工具库",
+  "test_case_file": "docs/test/工具库-测试用例.md",
+  "environment": "dev",
+  "base_url": "http://localhost:5173",
+  "started_at": "2026-03-16T16:30:00Z",
+  "last_update": "2026-03-16T16:35:00Z",
+  "stats": {
+    "total": 24,
+    "passed": 4,
+    "failed": 0,
+    "blocked": 16,
+    "pending": 4
+  },
+  "current_case": null,
+  "pending_cases": [
+    "TC-002", "TC-003", "TC-004", "TC-005"
+  ],
+  "blocked_cases": [
+    "TC-006", "TC-007", "TC-008", "TC-009", "TC-010", "TC-011", "TC-012",
+    "TC-013", "TC-014", "TC-015", "TC-016", "TC-017", "TC-018", "TC-019", "TC-020", "TC-021"
+  ],
+  "blocked_reason": "IPC 功能（文件对话框、Sharp 压缩/转换）需要 Electron 主进程，无法通过浏览器自动化测试",
+  "completed_cases": [
+    {
+      "id": "TC-001",
+      "name": "应用启动",
+      "status": "PASS",
+      "steps": [
+        {"step": 1, "action": "npm run dev", "expected": "编译成功", "actual": "main.js + preload.mjs 编译完成", "status": "PASS"},
+        {"step": 2, "action": "打开 localhost:5173", "expected": "侧栏 + 空状态页", "actual": "ImageKit logo + 3 菜单项 + SVG 空状态", "status": "PASS"},
+        {"step": 3, "action": "点击三个菜单项", "expected": "页面切换无白屏", "actual": "三个页面正常渲染", "status": "PASS"}
+      ],
+      "evidence": ["TC-001-compress-page.png", "TC-001-convert-page.png", "TC-001-recording.webp"]
+    },
+    {
+      "id": "TC-022",
+      "name": "侧栏折叠",
+      "status": "PASS",
+      "steps": [
+        {"step": 1, "action": "点击折叠按钮", "expected": "侧栏收缩为图标模式", "actual": "只显示图标，文字隐藏", "status": "PASS"},
+        {"step": 2, "action": "调整内容区", "expected": "自动扩展", "actual": "内容区扩展填满", "status": "PASS"},
+        {"step": 3, "action": "再次点击", "expected": "侧栏恢复", "actual": "展开显示文字", "status": "PASS"}
+      ],
+      "evidence": ["TC-022-collapsed.png", "TC-022-expanded.png", "TC-022-recording.webp"]
+    },
+    {
+      "id": "TC-023",
+      "name": "页面切换动画",
+      "status": "PASS",
+      "steps": [
+        {"step": 1, "action": "快速切换菜单", "expected": "平滑 slide 过渡", "actual": "过渡平滑，无闪烁", "status": "PASS"}
+      ]
+    },
+    {
+      "id": "TC-024",
+      "name": "暗色主题一致性",
+      "status": "PASS",
+      "steps": [
+        {"step": 1, "action": "检查侧栏", "expected": "暗色背景 + 渐变 Logo", "actual": "一致", "status": "PASS"},
+        {"step": 2, "action": "检查三个页面", "expected": "无白色突兀区域", "actual": "全部暗色", "status": "PASS"},
+        {"step": 3, "action": "检查组件", "expected": "Naive UI 暗色一致", "actual": "按钮、下拉、滑块均为暗色", "status": "PASS"}
+      ]
+    }
+  ]
+}

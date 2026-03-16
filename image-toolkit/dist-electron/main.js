@@ -205,7 +205,7 @@ function registerConvertHandlers() {
     return results;
   });
 }
-createRequire(import.meta.url);
+const require$1 = createRequire(import.meta.url);
 const __dirname$1 = path.dirname(fileURLToPath(import.meta.url));
 process.env.APP_ROOT = path.join(__dirname$1, "..");
 const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
@@ -267,7 +267,30 @@ app.on("activate", () => {
     createWindow();
   }
 });
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  createWindow();
+  const { globalShortcut } = require$1("electron");
+  globalShortcut.register("CmdOrCtrl+O", () => {
+    if (!win) return;
+    dialog.showOpenDialog(win, {
+      properties: ["openFile", "multiSelections"]
+    }).then((result) => {
+      if (result.filePaths.length > 0) {
+        win == null ? void 0 : win.webContents.send("shortcut:openFiles", result.filePaths);
+      }
+    });
+  });
+  globalShortcut.register("CmdOrCtrl+Shift+O", () => {
+    if (!win) return;
+    dialog.showOpenDialog(win, {
+      properties: ["openDirectory"]
+    }).then((result) => {
+      if (result.filePaths[0]) {
+        win == null ? void 0 : win.webContents.send("shortcut:openFolder", result.filePaths[0]);
+      }
+    });
+  });
+});
 export {
   MAIN_DIST,
   RENDERER_DIST,
