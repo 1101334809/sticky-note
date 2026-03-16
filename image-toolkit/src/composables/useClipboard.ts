@@ -1,4 +1,4 @@
-import { ref, onMounted, onUnmounted } from 'vue'
+import { onMounted, onUnmounted } from 'vue'
 
 export function useClipboard(onPaste?: (dataUrl: string) => void) {
   function handlePaste(e: ClipboardEvent) {
