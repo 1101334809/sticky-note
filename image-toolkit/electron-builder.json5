@@ -5,15 +5,25 @@
   asar: true,
   productName: "ImageKit",
   directories: {
-    output: "release/${version}",
+    output: "release-new/${version}",
   },
-  files: ["dist", "dist-electron", "node_modules/sharp/**/*"],
-  extraResources: [
-    {
-      from: "node_modules/sharp",
-      to: "sharp",
-      filter: ["**/*"],
-    },
+  // 只打包应用代码和 sharp 运行时依赖，排除前端 node_modules（已被 Vite 打包进 dist）
+  files: [
+    "dist",
+    "dist-electron",
+    "!node_modules",
+    "node_modules/sharp/**/*",
+    "node_modules/@img/**/*",
+    "node_modules/detect-libc/**/*",
+    "node_modules/semver/**/*",
+  ],
+  // 将 sharp 原生 .node 文件解包（原生模块不能在 asar 中运行）
+  asarUnpack: [
+    "node_modules/sharp/**/*.node",
+    "node_modules/@img/**/*.node",
+    "node_modules/@img/**/sharp-*.dll",
+    "node_modules/@img/**/*.so*",
+    "node_modules/@img/**/*.dylib",
   ],
   mac: {
     target: ["dmg"],
@@ -35,6 +45,7 @@
   },
   nsis: {
     oneClick: false,
+    unicode: true,
     perMachine: false,
     allowToChangeInstallationDirectory: true,
     deleteAppDataOnUninstall: false,

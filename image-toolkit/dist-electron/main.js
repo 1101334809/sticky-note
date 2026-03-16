@@ -1,304 +1,218 @@
-import { ipcMain, dialog, nativeTheme, app, BrowserWindow, Menu } from "electron";
-import { createRequire } from "node:module";
-import { fileURLToPath } from "node:url";
-import path from "node:path";
-import fs from "node:fs";
-import sharp from "sharp";
-function registerSvgHandlers() {
-  ipcMain.handle("svg:readFolder", async (_event, folderPath) => {
-    const files = fs.readdirSync(folderPath);
-    return files.filter((f) => f.toLowerCase().endsWith(".svg")).map((f) => {
-      const fullPath = path.join(folderPath, f);
-      const stats = fs.statSync(fullPath);
-      const content = fs.readFileSync(fullPath, "utf-8");
-      return { name: f, path: fullPath, size: stats.size, content };
-    });
-  });
-  ipcMain.handle("svg:changeColor", async (_event, svgContent, color) => {
-    let result = svgContent.replace(/fill="(?!none)[^"]*"/g, `fill="${color}"`);
-    result = result.replace(/stroke="(?!none)[^"]*"/g, `stroke="${color}"`);
-    result = result.replace(/fill:\s*(?!none)[^;}"]+/g, `fill: ${color}`);
-    result = result.replace(/stroke:\s*(?!none)[^;}"]+/g, `stroke: ${color}`);
-    return result;
-  });
-  ipcMain.handle("svg:saveFiles", async (_event, files) => {
-    let saved = 0;
-    for (const file of files) {
+import { ipcMain as f, dialog as w, nativeTheme as _, app as y, BrowserWindow as j, Menu as x } from "electron";
+import { createRequire as O } from "node:module";
+import { fileURLToPath as R } from "node:url";
+import o from "node:path";
+import p from "node:fs";
+import b from "sharp";
+function $() {
+  f.handle("svg:readFolder", async (i, e) => p.readdirSync(e).filter((t) => t.toLowerCase().endsWith(".svg")).map((t) => {
+    const r = o.join(e, t), c = p.statSync(r), a = p.readFileSync(r, "utf-8");
+    return { name: t, path: r, size: c.size, content: a };
+  })), f.handle("svg:changeColor", async (i, e, s) => {
+    let t = e.replace(/fill="(?!none)[^"]*"/g, `fill="${s}"`);
+    return t = t.replace(/stroke="(?!none)[^"]*"/g, `stroke="${s}"`), t = t.replace(/fill:\s*(?!none)[^;}"]+/g, `fill: ${s}`), t = t.replace(/stroke:\s*(?!none)[^;}"]+/g, `stroke: ${s}`), t;
+  }), f.handle("svg:saveFiles", async (i, e) => {
+    let s = 0;
+    for (const t of e)
       try {
-        fs.writeFileSync(file.path, file.content, "utf-8");
-        saved++;
-      } catch (e) {
-        console.error(`Failed to save ${file.path}:`, e);
+        p.writeFileSync(t.path, t.content, "utf-8"), s++;
+      } catch (r) {
+        console.error(`Failed to save ${t.path}:`, r);
       }
-    }
-    return { saved, total: files.length };
-  });
-  ipcMain.handle("svg:exportPng", async (_event, options) => {
+    return { saved: s, total: e.length };
+  }), f.handle("svg:exportPng", async (i, e) => {
     try {
-      const results = [];
-      for (const scale of options.scales) {
-        const svgBuffer = Buffer.from(options.svgContent);
-        const outputPath = path.join(
-          options.outputDir,
-          `${options.fileName}@${scale}x.png`
+      const s = [];
+      for (const t of e.scales) {
+        const r = Buffer.from(e.svgContent), c = o.join(
+          e.outputDir,
+          `${e.fileName}@${t}x.png`
         );
-        await sharp(svgBuffer, { density: 72 * scale }).png().toFile(outputPath);
-        results.push(outputPath);
+        await b(r, { density: 72 * t }).png().toFile(c), s.push(c);
       }
-      return { success: true, files: results };
-    } catch (e) {
-      return { success: false, error: e.message };
+      return { success: !0, files: s };
+    } catch (s) {
+      return { success: !1, error: s.message };
     }
   });
 }
-function registerCompressHandlers() {
-  ipcMain.handle("compress:start", async (event, options) => {
-    const results = [];
-    for (let i = 0; i < options.files.length; i++) {
-      const filePath = options.files[i];
-      const fileName = path.basename(filePath);
-      const ext = path.extname(filePath).toLowerCase();
+function E() {
+  f.handle("compress:start", async (i, e) => {
+    const s = [];
+    for (let t = 0; t < e.files.length; t++) {
+      const r = e.files[t], c = o.basename(r), a = o.extname(r).toLowerCase();
       try {
-        const originalBuffer = fs.readFileSync(filePath);
-        const originalSize = originalBuffer.length;
-        let pipeline = sharp(originalBuffer);
-        const quality = options.mode === "lossless" ? 100 : options.quality;
-        if ([".jpg", ".jpeg"].includes(ext)) {
-          pipeline = pipeline.jpeg({
-            quality,
-            mozjpeg: options.mode !== "lossless"
-          });
-        } else if (ext === ".png") {
-          pipeline = pipeline.png({
-            compressionLevel: options.mode === "lossless" ? 9 : 6,
-            quality: options.mode === "lossless" ? 100 : quality
-          });
-        } else if (ext === ".webp") {
-          pipeline = pipeline.webp({
-            quality,
-            lossless: options.mode === "lossless"
-          });
-        } else if (ext === ".avif") {
-          pipeline = pipeline.avif({
-            quality,
-            lossless: options.mode === "lossless"
-          });
-        } else if ([".tiff", ".tif"].includes(ext)) {
-          pipeline = pipeline.tiff({
-            quality,
-            compression: "lzw"
-          });
-        } else if (ext === ".gif") {
-          pipeline = pipeline.gif();
-        }
-        const compressedBuffer = await pipeline.toBuffer();
-        const compressedSize = compressedBuffer.length;
-        const savedPercent = Math.round((1 - compressedSize / originalSize) * 100);
-        const outputDir = options.outputDir || path.dirname(filePath);
-        const outputName = options.outputDir ? fileName : `${path.basename(fileName, ext)}_compressed${ext}`;
-        const outputPath = path.join(outputDir, outputName);
-        fs.writeFileSync(outputPath, compressedBuffer);
-        const result = {
-          file: filePath,
-          fileName,
-          originalSize,
-          compressedSize,
-          savedPercent,
-          outputPath,
+        const u = p.readFileSync(r), d = u.length;
+        let n = b(u);
+        const g = e.mode === "lossless" ? 100 : e.quality;
+        [".jpg", ".jpeg"].includes(a) ? n = n.jpeg({
+          quality: g,
+          mozjpeg: e.mode !== "lossless"
+        }) : a === ".png" ? n = n.png({
+          compressionLevel: e.mode === "lossless" ? 9 : 6,
+          quality: e.mode === "lossless" ? 100 : g
+        }) : a === ".webp" ? n = n.webp({
+          quality: g,
+          lossless: e.mode === "lossless"
+        }) : a === ".avif" ? n = n.avif({
+          quality: g,
+          lossless: e.mode === "lossless"
+        }) : [".tiff", ".tif"].includes(a) ? n = n.tiff({
+          quality: g,
+          compression: "lzw"
+        }) : a === ".gif" && (n = n.gif());
+        const h = await n.toBuffer(), m = h.length, z = Math.round((1 - m / d) * 100), B = e.outputDir || o.dirname(r), k = e.outputDir ? c : `${o.basename(c, a)}_compressed${a}`, P = o.join(B, k);
+        p.writeFileSync(P, h);
+        const S = {
+          file: r,
+          fileName: c,
+          originalSize: d,
+          compressedSize: m,
+          savedPercent: z,
+          outputPath: P,
           status: "success"
         };
-        results.push(result);
-        event.sender.send("compress:progress", { index: i, ...result });
-      } catch (e) {
-        const result = {
-          file: filePath,
-          fileName,
+        s.push(S), i.sender.send("compress:progress", { index: t, ...S });
+      } catch (u) {
+        const d = {
+          file: r,
+          fileName: c,
           status: "error",
-          error: e.message
+          error: u.message
         };
-        results.push(result);
-        event.sender.send("compress:progress", { index: i, ...result });
+        s.push(d), i.sender.send("compress:progress", { index: t, ...d });
       }
     }
-    return results;
-  });
-  ipcMain.handle("file:getInfo", async (_event, filePaths) => {
-    return filePaths.map((p) => {
-      try {
-        const stats = fs.statSync(p);
-        const name = path.basename(p);
-        const ext = path.extname(p).toLowerCase().slice(1).toUpperCase();
-        return { path: p, name, size: stats.size, type: ext, exists: true };
-      } catch {
-        return { path: p, name: path.basename(p), size: 0, type: "", exists: false };
-      }
-    });
-  });
+    return s;
+  }), f.handle("file:getInfo", async (i, e) => e.map((s) => {
+    try {
+      const t = p.statSync(s), r = o.basename(s), c = o.extname(s).toLowerCase().slice(1).toUpperCase();
+      return { path: s, name: r, size: t.size, type: c, exists: !0 };
+    } catch {
+      return { path: s, name: o.basename(s), size: 0, type: "", exists: !1 };
+    }
+  }));
 }
-function registerConvertHandlers() {
-  ipcMain.handle("convert:start", async (event, options) => {
-    const results = [];
-    for (let i = 0; i < options.files.length; i++) {
-      const filePath = options.files[i];
-      const fileName = path.basename(filePath, path.extname(filePath));
+function T() {
+  f.handle("convert:start", async (i, e) => {
+    const s = [];
+    for (let t = 0; t < e.files.length; t++) {
+      const r = e.files[t], c = o.basename(r, o.extname(r));
       try {
-        let pipeline = sharp(fs.readFileSync(filePath));
-        if (options.size && options.size > 0) {
-          pipeline = pipeline.resize(options.size, options.size, {
-            fit: "contain",
-            background: { r: 0, g: 0, b: 0, alpha: 0 }
-          });
-        }
-        const fmt = options.targetFormat.toLowerCase();
-        const newExt = fmt === "jpeg" ? "jpg" : fmt;
-        let outputBuffer;
-        switch (fmt) {
+        let a = b(p.readFileSync(r));
+        e.size && e.size > 0 && (a = a.resize(e.size, e.size, {
+          fit: "contain",
+          background: { r: 0, g: 0, b: 0, alpha: 0 }
+        }));
+        const u = e.targetFormat.toLowerCase(), d = u === "jpeg" ? "jpg" : u;
+        let n;
+        switch (u) {
           case "png":
-            outputBuffer = await pipeline.png().toBuffer();
+            n = await a.png().toBuffer();
             break;
           case "jpeg":
           case "jpg":
-            outputBuffer = await pipeline.flatten({ background: "#ffffff" }).jpeg({ quality: 90 }).toBuffer();
+            n = await a.flatten({ background: "#ffffff" }).jpeg({ quality: 90 }).toBuffer();
             break;
           case "webp":
-            outputBuffer = await pipeline.webp({ quality: 85 }).toBuffer();
+            n = await a.webp({ quality: 85 }).toBuffer();
             break;
           case "avif":
-            outputBuffer = await pipeline.avif({ quality: 80 }).toBuffer();
+            n = await a.avif({ quality: 80 }).toBuffer();
             break;
           case "tiff":
-            outputBuffer = await pipeline.tiff().toBuffer();
+            n = await a.tiff().toBuffer();
             break;
           case "bmp":
-            outputBuffer = await pipeline.png().toBuffer();
+            n = await a.png().toBuffer();
             break;
           case "ico":
-            outputBuffer = await pipeline.resize(256, 256, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer();
+            n = await a.resize(256, 256, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer();
             break;
           default:
-            outputBuffer = await pipeline.toBuffer();
+            n = await a.toBuffer();
         }
-        const outputDir = options.outputDir || path.dirname(filePath);
-        const outputPath = path.join(outputDir, `${fileName}.${newExt}`);
-        fs.writeFileSync(outputPath, outputBuffer);
-        const result = {
-          file: filePath,
-          fileName: `${fileName}.${newExt}`,
-          originalSize: fs.statSync(filePath).size,
-          convertedSize: outputBuffer.length,
-          outputPath,
+        const g = e.outputDir || o.dirname(r), h = o.join(g, `${c}.${d}`);
+        p.writeFileSync(h, n);
+        const m = {
+          file: r,
+          fileName: `${c}.${d}`,
+          originalSize: p.statSync(r).size,
+          convertedSize: n.length,
+          outputPath: h,
           status: "success"
         };
-        results.push(result);
-        event.sender.send("convert:progress", { index: i, ...result });
-      } catch (e) {
-        const result = {
-          file: filePath,
-          fileName: path.basename(filePath),
+        s.push(m), i.sender.send("convert:progress", { index: t, ...m });
+      } catch (a) {
+        const u = {
+          file: r,
+          fileName: o.basename(r),
           status: "error",
-          error: e.message
+          error: a.message
         };
-        results.push(result);
-        event.sender.send("convert:progress", { index: i, ...result });
+        s.push(u), i.sender.send("convert:progress", { index: t, ...u });
       }
     }
-    return results;
+    return s;
   });
 }
-const require$1 = createRequire(import.meta.url);
-const __dirname$1 = path.dirname(fileURLToPath(import.meta.url));
-process.env.APP_ROOT = path.join(__dirname$1, "..");
-const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
-const MAIN_DIST = path.join(process.env.APP_ROOT, "dist-electron");
-const RENDERER_DIST = path.join(process.env.APP_ROOT, "dist");
-process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, "public") : RENDERER_DIST;
-let win;
-function createWindow() {
-  nativeTheme.themeSource = "light";
-  Menu.setApplicationMenu(null);
-  win = new BrowserWindow({
+const L = O(import.meta.url), D = o.dirname(R(import.meta.url));
+process.env.APP_ROOT = o.join(D, "..");
+const v = process.env.VITE_DEV_SERVER_URL, M = o.join(process.env.APP_ROOT, "dist-electron"), C = o.join(process.env.APP_ROOT, "dist");
+process.env.VITE_PUBLIC = v ? o.join(process.env.APP_ROOT, "public") : C;
+let l;
+function F() {
+  _.themeSource = "light", x.setApplicationMenu(null), l = new j({
     width: 1280,
     height: 800,
     minWidth: 960,
     minHeight: 600,
     title: "Universal Toolkit",
-    icon: path.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
+    icon: o.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
     backgroundColor: "#ffffff",
     webPreferences: {
-      preload: path.join(__dirname$1, "preload.mjs")
+      preload: o.join(D, "preload.mjs")
     }
-  });
-  if (VITE_DEV_SERVER_URL) {
-    win.loadURL(VITE_DEV_SERVER_URL);
-  } else {
-    win.loadFile(path.join(RENDERER_DIST, "index.html"));
-  }
+  }), v ? l.loadURL(v) : l.loadFile(o.join(C, "index.html"));
 }
-ipcMain.handle("dialog:openFiles", async (_event, options) => {
-  const result = await dialog.showOpenDialog({
-    properties: options.properties || ["openFile", "multiSelections"],
-    filters: options.filters || []
-  });
-  return result.filePaths;
+f.handle("dialog:openFiles", async (i, e) => (await w.showOpenDialog({
+  properties: e.properties || ["openFile", "multiSelections"],
+  filters: e.filters || []
+})).filePaths);
+f.handle("dialog:openFolder", async () => (await w.showOpenDialog({ properties: ["openDirectory"] })).filePaths[0] || null);
+f.handle("dialog:saveDir", async () => (await w.showOpenDialog({ properties: ["openDirectory", "createDirectory"] })).filePaths[0] || null);
+f.handle("file:readText", async (i, e) => (await import("node:fs")).readFileSync(e, "utf-8"));
+f.handle("theme:toggle", async (i, e) => {
+  _.themeSource = e ? "dark" : "light", l && l.setBackgroundColor(e ? "#0f1123" : "#ffffff");
 });
-ipcMain.handle("dialog:openFolder", async () => {
-  const result = await dialog.showOpenDialog({ properties: ["openDirectory"] });
-  return result.filePaths[0] || null;
+$();
+E();
+T();
+y.on("window-all-closed", () => {
+  process.platform !== "darwin" && (y.quit(), l = null);
 });
-ipcMain.handle("dialog:saveDir", async () => {
-  const result = await dialog.showOpenDialog({ properties: ["openDirectory", "createDirectory"] });
-  return result.filePaths[0] || null;
+y.on("activate", () => {
+  j.getAllWindows().length === 0 && F();
 });
-ipcMain.handle("file:readText", async (_event, filePath) => {
-  const fs2 = await import("node:fs");
-  return fs2.readFileSync(filePath, "utf-8");
-});
-ipcMain.handle("theme:toggle", async (_event, isDark) => {
-  nativeTheme.themeSource = isDark ? "dark" : "light";
-  if (win) {
-    win.setBackgroundColor(isDark ? "#0f1123" : "#ffffff");
-  }
-});
-registerSvgHandlers();
-registerCompressHandlers();
-registerConvertHandlers();
-app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") {
-    app.quit();
-    win = null;
-  }
-});
-app.on("activate", () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow();
-  }
-});
-app.whenReady().then(() => {
-  createWindow();
-  const { globalShortcut } = require$1("electron");
-  globalShortcut.register("CmdOrCtrl+O", () => {
-    if (!win) return;
-    dialog.showOpenDialog(win, {
+y.whenReady().then(() => {
+  F();
+  const { globalShortcut: i } = L("electron");
+  i.register("CmdOrCtrl+O", () => {
+    l && w.showOpenDialog(l, {
       properties: ["openFile", "multiSelections"]
-    }).then((result) => {
-      if (result.filePaths.length > 0) {
-        win == null ? void 0 : win.webContents.send("shortcut:openFiles", result.filePaths);
-      }
+    }).then((e) => {
+      e.filePaths.length > 0 && (l == null || l.webContents.send("shortcut:openFiles", e.filePaths));
     });
-  });
-  globalShortcut.register("CmdOrCtrl+Shift+O", () => {
-    if (!win) return;
-    dialog.showOpenDialog(win, {
+  }), i.register("CmdOrCtrl+Shift+O", () => {
+    l && w.showOpenDialog(l, {
       properties: ["openDirectory"]
-    }).then((result) => {
-      if (result.filePaths[0]) {
-        win == null ? void 0 : win.webContents.send("shortcut:openFolder", result.filePaths[0]);
-      }
+    }).then((e) => {
+      e.filePaths[0] && (l == null || l.webContents.send("shortcut:openFolder", e.filePaths[0]));
     });
   });
 });
 export {
-  MAIN_DIST,
-  RENDERER_DIST,
-  VITE_DEV_SERVER_URL
+  M as MAIN_DIST,
+  C as RENDERER_DIST,
+  v as VITE_DEV_SERVER_URL
 };
