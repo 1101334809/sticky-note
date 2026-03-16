@@ -14,7 +14,7 @@ import {
 } from 'naive-ui'
 import {
   ImagesOutline,
-  CompressOutline,
+  ContractOutline,
   SwapHorizontalOutline,
 } from '@vicons/ionicons5'
 import { h } from 'vue'
@@ -31,7 +31,7 @@ const menuOptions: MenuOption[] = [
   {
     label: '图片压缩',
     key: '/compress',
-    icon: () => h(NIcon, null, { default: () => h(CompressOutline) }),
+    icon: () => h(NIcon, null, { default: () => h(ContractOutline) }),
   },
   {
     label: '格式转换',

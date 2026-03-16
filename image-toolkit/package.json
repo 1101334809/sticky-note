@@ -12,6 +12,7 @@
     "@vicons/ionicons5": "^0.13.0",
     "naive-ui": "^2.44.1",
     "pinia": "^3.0.4",
+    "sharp": "^0.34.5",
     "vue": "^3.4.21",
     "vue-router": "^4.6.4"
   },
