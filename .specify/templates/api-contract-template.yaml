@@ -1,0 +1,280 @@
+# API 契约模板
+#
+# 使用说明：
+# 1. 复制此模板到 .specify/specs/{功能编号}-{功能名}/contracts/api-spec.yaml
+# 2. 根据功能需求修改路径、参数和响应
+# 3. 使用 openapi-generator 等工具可生成客户端代码
+#
+openapi: 3.0.3
+info:
+  title: "{MODULE_NAME} API"
+  description: "{MODULE_DESCRIPTION}"
+  version: "1.0.0"
+  contact:
+    name: "Skyline AI Team"
+
+servers:
+  - url: "/api/v1"
+    description: "API V1"
+
+tags:
+  - name: "{module}"
+    description: "{模块描述}"
+
+paths:
+  /{module}:
+    get:
+      tags: ["{module}"]
+      summary: "获取列表"
+      operationId: "get{Module}List"
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+          description: "页码"
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 20
+          description: "每页数量"
+        - name: keyword
+          in: query
+          schema:
+            type: string
+          description: "搜索关键词"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+    post:
+      tags: ["{module}"]
+      summary: "创建"
+      operationId: "create{Module}"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRequest"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /{module}/{id}:
+    get:
+      tags: ["{module}"]
+      summary: "获取详情"
+      operationId: "get{Module}ById"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: "ID"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      tags: ["{module}"]
+      summary: "更新"
+      operationId: "update{Module}"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateRequest"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      tags: ["{module}"]
+      summary: "删除"
+      operationId: "delete{Module}"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: "成功"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+components:
+  schemas:
+    # 基础响应结构
+    ApiResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+        message:
+          type: string
+          example: "success"
+        data:
+          type: object
+
+    # 分页响应
+    PaginatedResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/{Module}Item"
+            total:
+              type: integer
+            page:
+              type: integer
+            page_size:
+              type: integer
+
+    # 实体定义
+    {Module}Item:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        status:
+          type: string
+          enum: ["draft", "active", "inactive"]
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    # 创建请求
+    CreateRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+
+    # 更新请求
+    UpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+        status:
+          type: string
+          enum: ["draft", "active", "inactive"]
+
+  responses:
+    BadRequest:
+      description: "请求参数错误"
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              code:
+                type: integer
+                example: 2001
+              message:
+                type: string
+                example: "参数验证失败"
+
+    Unauthorized:
+      description: "未授权"
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              code:
+                type: integer
+                example: 1001
+              message:
+                type: string
+                example: "未登录或登录已过期"
+
+    NotFound:
+      description: "资源不存在"
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              code:
+                type: integer
+                example: 3002
+              message:
+                type: string
+                example: "资源不存在"
+
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: satoken
+      description: "SSO Cookie 认证"
+
+security:
+  - cookieAuth: []

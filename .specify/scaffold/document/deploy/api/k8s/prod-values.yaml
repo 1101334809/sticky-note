@@ -1,0 +1,69 @@
+# ============================================
+# 生产环境 Helm Values
+# ============================================
+#
+# 使用说明：
+# 1. 复制到项目的 document/deploy/api/k8s/
+# 2. 修改以下配置项：
+#    - image.repository: 改为项目镜像地址
+#    - NACOS_DATA_ID: 改为项目的 Nacos 配置文件名
+#    - nodeSelector: 根据实际节点调整
+#
+# ============================================
+
+replicaCount: 1
+
+image:
+  # TODO: 修改为项目镜像地址
+  repository: harbor.skyline.com/skyline-ai/{PROJECT_NAME}
+  pullPolicy: IfNotPresent
+  tag: latest
+
+kind: Deployment
+
+global:
+  preStop: '"sh","-c","sleep 10"'
+  terminationGracePeriodSeconds: 45
+
+service:
+  type: ClusterIP
+  ports:
+    - port: 8000
+      name: http
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256M
+  limits:
+    cpu: 3000m
+    memory: 5Gi
+
+logging: true
+
+# 开启健康检查
+healthCheck:
+  enabled: true
+  URN: /ping
+
+# 注入环境变量
+env:
+  ENVIRONMENT: "production"
+  NACOS_HOST: "skyline-nacos-03.skyline-middleware.svc.cluster.local"
+  NACOS_PORT: "8848"
+  NACOS_USER: "nacos"
+  NACOS_PASSWORD: "nacos"
+  NACOS_NAMESPACE: "skyline-ai"
+  # TODO: 修改为项目的 Nacos 配置文件名
+  NACOS_DATA_ID: "skyline-ai-{PROJECT_NAME}.yaml"
+  NACOS_GROUP: "DEFAULT_GROUP"
+
+mount:
+  enable: false
+
+podTopology:
+  enabled: false
+
+# TODO: 根据实际节点调整
+nodeSelector:
+  skyline-3: "true"

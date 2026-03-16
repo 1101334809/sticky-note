@@ -1,0 +1,37 @@
+{
+  "system_name": "{系统名称}",
+  "system_url": "{系统URL}",
+  "scan_date": "{扫描日期}",
+  "total_nodes": 0,
+  "traversed_count": 0,
+  "pending_count": 0,
+  "current_node": null,
+  "current_batch": null,
+  "pending_nodes": [],
+  "completed_nodes": [],
+  "skipped_nodes": [],
+  "checkpoints": [],
+  "last_checkpoint": null,
+  "last_update": null,
+  "status": "initialized",
+  "config": {
+    "checkpoint_interval": 5,
+    "batch_mode": false,
+    "current_batch_name": null
+  },
+  "statistics": {
+    "by_status": {
+      "success": 0,
+      "skipped": 0,
+      "error": 0
+    },
+    "by_level": {
+      "L1": { "total": 0, "done": 0 },
+      "L2": { "total": 0, "done": 0 },
+      "L3": { "total": 0, "done": 0 },
+      "L4": { "total": 0, "done": 0 },
+      "L5": { "total": 0, "done": 0 }
+    },
+    "by_module": {}
+  }
+}
