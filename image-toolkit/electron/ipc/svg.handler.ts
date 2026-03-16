@@ -1,6 +1,7 @@
 import { ipcMain } from 'electron'
 import fs from 'node:fs'
 import path from 'node:path'
+import sharp from 'sharp'
 
 /**
  * SVG IPC Handlers
@@ -58,7 +59,6 @@ export function registerSvgHandlers() {
   }) => {
     // 使用 Sharp 进行 SVG → PNG 转换
     try {
-      const sharp = require('sharp')
       const results: string[] = []
 
       for (const scale of options.scales) {

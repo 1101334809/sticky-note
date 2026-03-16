@@ -1,6 +1,7 @@
 import { ipcMain } from 'electron'
 import fs from 'node:fs'
 import path from 'node:path'
+import sharp from 'sharp'
 
 /**
  * 格式转换 IPC Handlers
@@ -11,10 +12,9 @@ export function registerConvertHandlers() {
   ipcMain.handle('convert:start', async (event, options: {
     files: string[]
     targetFormat: string
-    size?: number  // 预设尺寸，如 16、32、64...
+    size?: number
     outputDir?: string
   }) => {
-    const sharp = require('sharp')
     const results: any[] = []
 
     for (let i = 0; i < options.files.length; i++) {

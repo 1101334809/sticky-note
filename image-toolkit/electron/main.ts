@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, nativeTheme } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, nativeTheme, Menu } from 'electron'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
@@ -21,6 +21,7 @@ let win: BrowserWindow | null
 
 function createWindow() {
   nativeTheme.themeSource = 'dark'
+  Menu.setApplicationMenu(null)
 
   win = new BrowserWindow({
     width: 1280,
@@ -64,6 +65,12 @@ ipcMain.handle('dialog:saveDir', async () => {
   return result.filePaths[0] || null
 })
 
+// 读取单个文本文件
+ipcMain.handle('file:readText', async (_event, filePath: string) => {
+  const fs = await import('node:fs')
+  return fs.readFileSync(filePath, 'utf-8')
+})
+
 // ====== 注册模块化 IPC handlers ======
 registerSvgHandlers()
 registerCompressHandlers()
@@ -83,4 +90,33 @@ app.on('activate', () => {
   }
 })
 
-app.whenReady().then(createWindow)
+app.whenReady().then(() => {
+  createWindow()
+
+  // ====== 快捷键 T-040 ======
+  const { globalShortcut } = require('electron')
+
+  // Ctrl+O 打开文件
+  globalShortcut.register('CmdOrCtrl+O', () => {
+    if (!win) return
+    dialog.showOpenDialog(win, {
+      properties: ['openFile', 'multiSelections'],
+    }).then(result => {
+      if (result.filePaths.length > 0) {
+        win?.webContents.send('shortcut:openFiles', result.filePaths)
+      }
+    })
+  })
+
+  // Ctrl+Shift+O 打开文件夹
+  globalShortcut.register('CmdOrCtrl+Shift+O', () => {
+    if (!win) return
+    dialog.showOpenDialog(win, {
+      properties: ['openDirectory'],
+    }).then(result => {
+      if (result.filePaths[0]) {
+        win?.webContents.send('shortcut:openFolder', result.filePaths[0])
+      }
+    })
+  })
+})

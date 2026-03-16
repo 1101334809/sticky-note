@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, inject, watch, type Ref } from 'vue'
 import {
-  NSpace, NButton, NIcon, NSelect, NEmpty, NTag, NCard,
+  NButton, NIcon, NSelect, NTag,
   useMessage,
 } from 'naive-ui'
 import { FolderOpenOutline } from '@vicons/ionicons5'
@@ -11,13 +11,30 @@ interface FileItem {
   path: string
   size: number
   status: 'pending' | 'processing' | 'done' | 'error'
-  newExt?: string
+  newName?: string
+  convertedSize?: number
+  error?: string
 }
 
 const message = useMessage()
 const files = ref<FileItem[]>([])
 const isLoaded = ref(false)
 const isProcessing = ref(false)
+
+// 接收全局拖拽文件
+const imgExts = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif', 'tiff', 'tif', 'bmp', 'ico', 'svg']
+const droppedFiles = inject<Ref<string[]>>('droppedFiles', ref([]))
+watch(droppedFiles, async (paths) => {
+  if (!paths.length) return
+  const imgPaths = paths.filter(p => imgExts.includes(p.split('.').pop()?.toLowerCase() || ''))
+  if (imgPaths.length === 0) return
+  const fileInfos: any[] = await window.ipcRenderer.invoke('file:getInfo', imgPaths)
+  files.value = [...files.value, ...fileInfos.map((f: any) => ({
+    name: f.name, path: f.path, size: f.size, status: 'pending' as const,
+  }))]
+  isLoaded.value = true
+  message.success(`已通过拖拽添加 ${imgPaths.length} 个文件`)
+})
 const targetFormat = ref('webp')
 const presetSize = ref('')
 
@@ -51,17 +68,28 @@ const formatCards = [
   { key: 'tiff', icon: '🎞️', title: 'TIFF', desc: '高质量，印刷用途' },
 ]
 
+function formatSize(bytes: number) {
+  if (bytes === 0) return '—'
+  if (bytes < 1024) return bytes + ' B'
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+}
+
 async function selectFiles() {
   try {
     const paths: string[] = await window.ipcRenderer.invoke('dialog:openFiles', {
-      filters: [{ name: '图片', extensions: ['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif', 'tiff', 'tif', 'bmp', 'ico'] }],
+      filters: [{ name: '图片', extensions: ['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif', 'tiff', 'tif', 'bmp', 'ico', 'svg'] }],
       properties: ['openFile', 'multiSelections'],
     })
     if (!paths.length) return
-    files.value = paths.map(p => {
-      const name = p.split(/[\\/]/).pop() || p
-      return { name, path: p, size: 0, status: 'pending' as const }
-    })
+
+    const fileInfos: any[] = await window.ipcRenderer.invoke('file:getInfo', paths)
+    files.value = fileInfos.map((f: any) => ({
+      name: f.name,
+      path: f.path,
+      size: f.size,
+      status: 'pending' as const,
+    }))
     isLoaded.value = true
     message.success(`已添加 ${paths.length} 个文件`)
   } catch (e: any) {
@@ -72,14 +100,39 @@ async function selectFiles() {
 async function startConvert() {
   if (!files.value.length) return
   isProcessing.value = true
-  for (let i = 0; i < files.value.length; i++) {
-    files.value[i].status = 'processing'
-    await new Promise(r => setTimeout(r, 400))
-    files.value[i].newExt = targetFormat.value
-    files.value[i].status = 'done'
+  files.value.forEach(f => f.status = 'processing')
+
+  const handler = (_event: any, result: any) => {
+    const file = files.value[result.index]
+    if (!file) return
+    if (result.status === 'success') {
+      file.status = 'done'
+      file.newName = result.fileName
+      file.convertedSize = result.convertedSize
+    } else {
+      file.status = 'error'
+      file.error = result.error
+    }
   }
-  isProcessing.value = false
-  message.success(`转换完成！${files.value.length} 个文件已转为 ${targetFormat.value.toUpperCase()}`)
+  window.ipcRenderer.on('convert:progress', handler)
+
+  try {
+    const results = await window.ipcRenderer.invoke('convert:start', {
+      files: files.value.map(f => f.path),
+      targetFormat: targetFormat.value,
+      size: presetSize.value ? parseInt(presetSize.value) : undefined,
+    })
+
+    const successCount = results.filter((r: any) => r.status === 'success').length
+    const errorCount = results.filter((r: any) => r.status === 'error').length
+    message.success(`转换完成！${successCount} 个文件已转为 ${targetFormat.value.toUpperCase()}`)
+    if (errorCount > 0) message.warning(`${errorCount} 个文件处理失败`)
+  } catch (e: any) {
+    message.error('转换失败: ' + e.message)
+  } finally {
+    window.ipcRenderer.off('convert:progress', handler)
+    isProcessing.value = false
+  }
 }
 </script>
 
@@ -94,7 +147,6 @@ async function startConvert() {
 
       <span style="color: rgba(255,255,255,0.5); font-size: 0.85em">目标格式</span>
       <NSelect v-model:value="targetFormat" :options="formatOptions" size="small" style="width: 120px" />
-
       <NSelect v-model:value="presetSize" :options="sizeOptions" size="small" style="width: 150px" placeholder="尺寸预设" />
 
       <div style="flex: 1" />
@@ -108,7 +160,7 @@ async function startConvert() {
     <div style="flex: 1; padding: 24px; overflow-y: auto">
       <!-- 空状态 -->
       <div v-if="!isLoaded" style="display: flex; align-items: center; justify-content: center; height: 100%">
-        <div 
+        <div
           @click="selectFiles"
           style="border: 2px dashed rgba(102,126,234,0.3); border-radius: 16px; padding: 64px 48px; text-align: center; cursor: pointer; transition: all 0.3s"
           @mouseenter="($event.target as HTMLElement).style.borderColor = '#667eea'"
@@ -150,14 +202,18 @@ async function startConvert() {
           <div style="width: 40px; height: 40px; border-radius: 6px; background: rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center; font-size: 1.2em; flex-shrink: 0">📄</div>
           <div style="flex: 1; min-width: 0">
             <div style="color: #ddd; font-size: 0.85em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">
-              {{ file.status === 'done' ? file.name.replace(/\.\w+$/, '.' + file.newExt) : file.name }}
+              {{ file.status === 'done' && file.newName ? file.newName : file.name }}
+            </div>
+            <div style="color: rgba(255,255,255,0.35); font-size: 0.75em">
+              {{ formatSize(file.size) }}
+              <span v-if="file.convertedSize"> → {{ formatSize(file.convertedSize) }}</span>
             </div>
           </div>
           <div>
             <NTag v-if="file.status === 'pending'" size="small" type="info">待转换</NTag>
             <NTag v-else-if="file.status === 'processing'" size="small" type="warning">转换中…</NTag>
-            <NTag v-else-if="file.status === 'done'" size="small" type="success">→ .{{ file.newExt }}</NTag>
-            <NTag v-else size="small" type="error">失败</NTag>
+            <NTag v-else-if="file.status === 'done'" size="small" type="success">→ .{{ targetFormat }}</NTag>
+            <NTag v-else size="small" type="error" :title="file.error">失败</NTag>
           </div>
         </div>
       </div>

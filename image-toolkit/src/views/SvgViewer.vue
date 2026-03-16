@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, inject, watch, type Ref } from 'vue'
 import {
-  NSpace, NButton, NInput, NIcon, NGrid, NGridItem,
-  NEmpty, NCard, NColorPicker, NTooltip, NButtonGroup,
-  useMessage, useNotification,
+  NButton, NInput, NIcon, NGrid, NGridItem,
+  NEmpty, NColorPicker, NTooltip, NButtonGroup,
+  useMessage,
 } from 'naive-ui'
 import {
   FolderOpenOutline,
+  DocumentOutline,
   GridOutline,
   ListOutline,
   ColorPaletteOutline,
@@ -29,6 +30,23 @@ const selectedFiles = ref<Set<string>>(new Set())
 const fillColor = ref('#667eea')
 const isLoaded = ref(false)
 
+// 接收全局拖拽文件
+const droppedFiles = inject<Ref<string[]>>('droppedFiles', ref([]))
+watch(droppedFiles, async (paths) => {
+  if (!paths.length) return
+  const svgPaths = paths.filter(p => p.toLowerCase().endsWith('.svg'))
+  if (svgPaths.length === 0) return
+  for (const p of svgPaths) {
+    try {
+      const content = await window.ipcRenderer.invoke('file:readText', p)
+      const name = p.split(/[\\/]/).pop() || p
+      svgFiles.value.push({ name, path: p, size: content.length, content })
+    } catch { /* skip bad files */ }
+  }
+  isLoaded.value = true
+  message.success(`已通过拖拽添加 ${svgPaths.length} 个 SVG 文件`)
+})
+
 const filteredFiles = computed(() => {
   if (!searchQuery.value) return svgFiles.value
   const q = searchQuery.value.toLowerCase()
@@ -43,6 +61,28 @@ async function loadFolder() {
     svgFiles.value = files
     isLoaded.value = true
     message.success(`已加载 ${files.length} 个 SVG 文件`)
+  } catch (e: any) {
+    message.error('加载失败: ' + e.message)
+  }
+}
+
+async function loadFiles() {
+  try {
+    const paths: string[] = await window.ipcRenderer.invoke('dialog:openFiles', {
+      filters: [{ name: 'SVG 文件', extensions: ['svg'] }],
+      properties: ['openFile', 'multiSelections'],
+    })
+    if (!paths.length) return
+    // 逐个读取 SVG 文件内容
+    const newFiles: SvgFile[] = []
+    for (const p of paths) {
+      const content = await window.ipcRenderer.invoke('file:readText', p)
+      const name = p.split(/[\\/]/).pop() || p
+      newFiles.push({ name, path: p, size: content.length, content })
+    }
+    svgFiles.value = [...svgFiles.value, ...newFiles]
+    isLoaded.value = true
+    message.success(`已添加 ${newFiles.length} 个 SVG 文件`)
   } catch (e: any) {
     message.error('加载失败: ' + e.message)
   }
@@ -91,9 +131,13 @@ function exportPng() {
   <div style="height: 100%; display: flex; flex-direction: column; overflow: hidden">
     <!-- 工具栏 -->
     <div style="padding: 16px 24px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid rgba(255,255,255,0.06); flex-shrink: 0">
-      <NButton @click="loadFolder" type="primary" size="small">
+      <NButton @click="loadFiles" type="primary" size="small">
+        <template #icon><NIcon><DocumentOutline /></NIcon></template>
+        选择文件
+      </NButton>
+      <NButton @click="loadFolder" size="small">
         <template #icon><NIcon><FolderOpenOutline /></NIcon></template>
-        打开文件夹
+        选择文件夹
       </NButton>
       
       <NInput
@@ -134,15 +178,20 @@ function exportPng() {
     <div style="flex: 1; padding: 24px; overflow-y: auto">
       <!-- 空状态 -->
       <div v-if="!isLoaded" style="display: flex; align-items: center; justify-content: center; height: 100%">
-        <div 
-          @click="loadFolder"
-          style="border: 2px dashed rgba(102,126,234,0.3); border-radius: 16px; padding: 64px 48px; text-align: center; cursor: pointer; transition: all 0.3s"
-          @mouseenter="($event.target as HTMLElement).style.borderColor = '#667eea'"
-          @mouseleave="($event.target as HTMLElement).style.borderColor = 'rgba(102,126,234,0.3)'"
-        >
+        <div style="border: 2px dashed rgba(102,126,234,0.3); border-radius: 16px; padding: 48px; text-align: center; transition: all 0.3s">
           <div style="font-size: 3em; margin-bottom: 16px">📂</div>
-          <p style="color: rgba(255,255,255,0.5); font-size: 1.1em">点击选择 SVG 文件夹</p>
-          <p style="color: rgba(255,255,255,0.3); font-size: 0.85em; margin-top: 8px">或将文件夹拖拽到此处</p>
+          <p style="color: rgba(255,255,255,0.5); font-size: 1.1em; margin-bottom: 16px">加载 SVG 文件</p>
+          <div style="display: flex; gap: 12px; justify-content: center">
+            <NButton @click="loadFiles" type="primary" size="medium">
+              <template #icon><NIcon><DocumentOutline /></NIcon></template>
+              选择文件
+            </NButton>
+            <NButton @click="loadFolder" size="medium">
+              <template #icon><NIcon><FolderOpenOutline /></NIcon></template>
+              选择文件夹
+            </NButton>
+          </div>
+          <p style="color: rgba(255,255,255,0.3); font-size: 0.85em; margin-top: 16px">或将 SVG 文件拖拽到此处</p>
         </div>
       </div>
 

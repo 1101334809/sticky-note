@@ -1,6 +1,7 @@
 import { ipcMain } from 'electron'
 import fs from 'node:fs'
 import path from 'node:path'
+import sharp from 'sharp'
 
 /**
  * 图片压缩 IPC Handlers
@@ -14,7 +15,6 @@ export function registerCompressHandlers() {
     quality: number
     outputDir?: string
   }) => {
-    const sharp = require('sharp')
     const results: any[] = []
 
     for (let i = 0; i < options.files.length; i++) {

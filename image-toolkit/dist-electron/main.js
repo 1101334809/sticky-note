@@ -1,8 +1,9 @@
-import { ipcMain, dialog, app, BrowserWindow, nativeTheme } from "electron";
+import { ipcMain, dialog, app, BrowserWindow, nativeTheme, Menu } from "electron";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import fs from "node:fs";
+import sharp from "sharp";
 function registerSvgHandlers() {
   ipcMain.handle("svg:readFolder", async (_event, folderPath) => {
     const files = fs.readdirSync(folderPath);
@@ -34,7 +35,6 @@ function registerSvgHandlers() {
   });
   ipcMain.handle("svg:exportPng", async (_event, options) => {
     try {
-      const sharp = require("sharp");
       const results = [];
       for (const scale of options.scales) {
         const svgBuffer = Buffer.from(options.svgContent);
@@ -53,7 +53,6 @@ function registerSvgHandlers() {
 }
 function registerCompressHandlers() {
   ipcMain.handle("compress:start", async (event, options) => {
-    const sharp = require("sharp");
     const results = [];
     for (let i = 0; i < options.files.length; i++) {
       const filePath = options.files[i];
@@ -138,7 +137,6 @@ function registerCompressHandlers() {
 }
 function registerConvertHandlers() {
   ipcMain.handle("convert:start", async (event, options) => {
-    const sharp = require("sharp");
     const results = [];
     for (let i = 0; i < options.files.length; i++) {
       const filePath = options.files[i];
@@ -217,6 +215,7 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, 
 let win;
 function createWindow() {
   nativeTheme.themeSource = "dark";
+  Menu.setApplicationMenu(null);
   win = new BrowserWindow({
     width: 1280,
     height: 800,
@@ -249,6 +248,10 @@ ipcMain.handle("dialog:openFolder", async () => {
 ipcMain.handle("dialog:saveDir", async () => {
   const result = await dialog.showOpenDialog({ properties: ["openDirectory", "createDirectory"] });
   return result.filePaths[0] || null;
+});
+ipcMain.handle("file:readText", async (_event, filePath) => {
+  const fs2 = await import("node:fs");
+  return fs2.readFileSync(filePath, "utf-8");
 });
 registerSvgHandlers();
 registerCompressHandlers();
