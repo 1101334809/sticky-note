@@ -1,4 +1,4 @@
-import { ipcMain, dialog, app, BrowserWindow, nativeTheme, Menu } from "electron";
+import { ipcMain, dialog, nativeTheme, app, BrowserWindow, Menu } from "electron";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
@@ -214,16 +214,16 @@ const RENDERER_DIST = path.join(process.env.APP_ROOT, "dist");
 process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, "public") : RENDERER_DIST;
 let win;
 function createWindow() {
-  nativeTheme.themeSource = "dark";
+  nativeTheme.themeSource = "light";
   Menu.setApplicationMenu(null);
   win = new BrowserWindow({
     width: 1280,
     height: 800,
     minWidth: 960,
     minHeight: 600,
-    title: "ImageKit - 图片工具库",
+    title: "Universal Toolkit",
     icon: path.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
-    backgroundColor: "#0f1123",
+    backgroundColor: "#ffffff",
     webPreferences: {
       preload: path.join(__dirname$1, "preload.mjs")
     }
@@ -252,6 +252,12 @@ ipcMain.handle("dialog:saveDir", async () => {
 ipcMain.handle("file:readText", async (_event, filePath) => {
   const fs2 = await import("node:fs");
   return fs2.readFileSync(filePath, "utf-8");
+});
+ipcMain.handle("theme:toggle", async (_event, isDark) => {
+  nativeTheme.themeSource = isDark ? "dark" : "light";
+  if (win) {
+    win.setBackgroundColor(isDark ? "#0f1123" : "#ffffff");
+  }
 });
 registerSvgHandlers();
 registerCompressHandlers();

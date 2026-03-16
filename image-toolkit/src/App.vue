@@ -8,6 +8,8 @@ import {
   NLayoutSider,
   NMenu,
   NIcon,
+  NButton,
+  NTooltip,
   darkTheme,
   type MenuOption,
 } from 'naive-ui'
@@ -15,6 +17,8 @@ import {
   ImagesOutline,
   ContractOutline,
   SwapHorizontalOutline,
+  SunnyOutline,
+  MoonOutline,
 } from '@vicons/ionicons5'
 import { h } from 'vue'
 
@@ -69,9 +73,21 @@ onUnmounted(() => {
   document.removeEventListener('drop', handleDrop)
 })
 
+// ====== 主题切换 ======
+const isDark = ref(false)
+const currentTheme = computed(() => isDark.value ? darkTheme : null)
+const siderBg = computed(() => isDark.value ? '#18181c' : '#f8f8fa')
+const logoBorder = computed(() => isDark.value ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)')
+
+function toggleTheme() {
+  isDark.value = !isDark.value
+  window.ipcRenderer?.invoke('theme:toggle', isDark.value)
+}
+
 // 暴露给子组件
 provide('droppedFiles', droppedFiles)
 provide('isDragging', isDragging)
+provide('isDark', isDark)
 
 // ====== 菜单 ======
 const menuOptions: MenuOption[] = [
@@ -100,7 +116,7 @@ function handleMenuUpdate(key: string) {
 </script>
 
 <template>
-  <NConfigProvider :theme="darkTheme">
+  <NConfigProvider :theme="currentTheme">
     <NMessageProvider>
       <NLayout has-sider style="height: 100vh">
         <!-- 侧栏 -->
@@ -110,12 +126,12 @@ function handleMenuUpdate(key: string) {
           :collapsed-width="64"
           show-trigger
           collapse-mode="width"
-          style="background: #18181c"
+          :style="{ background: siderBg }"
         >
           <!-- Logo -->
-          <div style="padding: 20px 16px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.06)">
+          <div :style="{ padding: '20px 16px', textAlign: 'center', borderBottom: '1px solid ' + logoBorder }">
             <span style="font-size: 1.4em">🧰</span>
-            <span style="font-weight: 700; margin-left: 8px; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 1.1em">ImageKit</span>
+            <span style="font-weight: 700; margin-left: 8px; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 1.1em">Universal Toolkit</span>
           </div>
 
           <!-- 导航菜单 -->
@@ -125,6 +141,23 @@ function handleMenuUpdate(key: string) {
             @update:value="handleMenuUpdate"
             :indent="20"
           />
+
+          <!-- 主题切换 -->
+          <div style="position: absolute; bottom: 16px; left: 0; right: 0; display: flex; justify-content: center">
+            <NTooltip>
+              <template #trigger>
+                <NButton circle quaternary size="large" @click="toggleTheme">
+                  <template #icon>
+                    <NIcon :size="20">
+                      <MoonOutline v-if="!isDark" />
+                      <SunnyOutline v-else />
+                    </NIcon>
+                  </template>
+                </NButton>
+              </template>
+              {{ isDark ? '切换到浅色模式' : '切换到深色模式' }}
+            </NTooltip>
+          </div>
         </NLayoutSider>
 
         <!-- 主内容区 -->
@@ -173,6 +206,7 @@ html, body, #app {
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
                'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 /* 滚动条 */
 ::-webkit-scrollbar {
@@ -182,11 +216,11 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255,255,255,0.15);
+  background: rgba(128,128,128,0.3);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255,255,255,0.25);
+  background: rgba(128,128,128,0.5);
 }
 /* 页面过渡动画 */
 .page-slide-enter-active,

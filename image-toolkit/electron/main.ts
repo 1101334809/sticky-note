@@ -20,7 +20,7 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
 let win: BrowserWindow | null
 
 function createWindow() {
-  nativeTheme.themeSource = 'dark'
+  nativeTheme.themeSource = 'light'
   Menu.setApplicationMenu(null)
 
   win = new BrowserWindow({
@@ -28,9 +28,9 @@ function createWindow() {
     height: 800,
     minWidth: 960,
     minHeight: 600,
-    title: 'ImageKit - 图片工具库',
+    title: 'Universal Toolkit',
     icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
-    backgroundColor: '#0f1123',
+    backgroundColor: '#ffffff',
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
     },
@@ -69,6 +69,14 @@ ipcMain.handle('dialog:saveDir', async () => {
 ipcMain.handle('file:readText', async (_event, filePath: string) => {
   const fs = await import('node:fs')
   return fs.readFileSync(filePath, 'utf-8')
+})
+
+// 主题切换
+ipcMain.handle('theme:toggle', async (_event, isDark: boolean) => {
+  nativeTheme.themeSource = isDark ? 'dark' : 'light'
+  if (win) {
+    win.setBackgroundColor(isDark ? '#0f1123' : '#ffffff')
+  }
 })
 
 // ====== 注册模块化 IPC handlers ======
