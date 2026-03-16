@@ -1,0 +1,1444 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>桌面便签 - 原型</title>
+
+    <!-- 必须的元信息 -->
+    <meta name="prototype-name" content="桌面便签" />
+    <meta name="prototype-iteration" content="2026.3.16-便签方案处理" />
+    <meta name="prototype-author" content="AI" />
+    <meta name="prototype-created" content="2026-03-16" />
+    <meta name="prototype-updated" content="2026-03-16" />
+    <meta
+      name="prototype-description"
+      content="Electron 桌面便签应用原型，模拟便签窗口、管理面板、系统托盘交互"
+    />
+
+    <style>
+      /* === 基础重置 === */
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+          "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+        line-height: 1.6;
+        color: #333;
+        background: #e8e8e8;
+        min-height: 100vh;
+        overflow: hidden;
+      }
+
+      /* === 桌面模拟背景 === */
+      .desktop {
+        width: 100vw;
+        height: 100vh;
+        position: relative;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        overflow: hidden;
+      }
+
+      /* === 系统托盘条 === */
+      .taskbar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 48px;
+        background: rgba(30, 30, 30, 0.92);
+        backdrop-filter: blur(20px);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 16px;
+        z-index: 9999;
+      }
+
+      .taskbar-left {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .taskbar-right {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 12px;
+      }
+
+      .tray-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 18px;
+        transition: background 0.15s;
+      }
+
+      .tray-icon:hover {
+        background: rgba(255, 255, 255, 0.1);
+      }
+
+      .tray-icon.active {
+        background: rgba(255, 255, 255, 0.15);
+      }
+
+      /* === 托盘右键菜单 === */
+      .tray-menu {
+        position: fixed;
+        bottom: 56px;
+        left: 16px;
+        background: rgba(44, 44, 44, 0.96);
+        backdrop-filter: blur(20px);
+        border-radius: 8px;
+        padding: 4px 0;
+        min-width: 200px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        display: none;
+        z-index: 10000;
+      }
+
+      .tray-menu.show {
+        display: block;
+      }
+
+      .tray-menu-item {
+        padding: 8px 16px;
+        color: rgba(255, 255, 255, 0.9);
+        font-size: 13px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        transition: background 0.1s;
+      }
+
+      .tray-menu-item:hover {
+        background: rgba(255, 255, 255, 0.1);
+      }
+
+      .tray-menu-divider {
+        height: 1px;
+        background: rgba(255, 255, 255, 0.1);
+        margin: 4px 0;
+      }
+
+      /* === 便签颜色定义 === */
+      :root {
+        --note-yellow: #fff9c4;
+        --note-yellow-header: #fff176;
+        --note-green: #c8e6c9;
+        --note-green-header: #81c784;
+        --note-blue: #bbdefb;
+        --note-blue-header: #64b5f6;
+        --note-pink: #f8bbd0;
+        --note-pink-header: #f06292;
+        --note-purple: #e1bee7;
+        --note-purple-header: #ba68c8;
+        --note-orange: #ffe0b2;
+        --note-orange-header: #ffb74d;
+      }
+
+      /* === 便签窗口 === */
+      .note-window {
+        position: absolute;
+        width: 300px;
+        min-height: 300px;
+        border-radius: 8px;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        resize: both;
+        transition: box-shadow 0.2s;
+      }
+
+      .note-window:hover {
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+      }
+
+      .note-window.on-top {
+        z-index: 1000;
+        box-shadow: 0 8px 40px rgba(0, 0, 0, 0.3);
+      }
+
+      .note-window.dragging {
+        opacity: 0.9;
+        cursor: grabbing;
+      }
+
+      /* 自定义标题栏 */
+      .note-titlebar {
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 4px 0 12px;
+        cursor: grab;
+        user-select: none;
+        -webkit-app-region: drag;
+      }
+
+      .note-titlebar:active {
+        cursor: grabbing;
+      }
+
+      .note-titlebar-left {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+      }
+
+      .note-titlebar-right {
+        display: flex;
+        align-items: center;
+        gap: 0;
+      }
+
+      .note-btn {
+        width: 28px;
+        height: 28px;
+        border: none;
+        background: transparent;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 14px;
+        opacity: 0.6;
+        transition: all 0.15s;
+        -webkit-app-region: no-drag;
+      }
+
+      .note-btn:hover {
+        opacity: 1;
+        background: rgba(0, 0, 0, 0.08);
+      }
+
+      .note-btn.pin-active {
+        opacity: 1;
+        color: #e74c3c;
+      }
+
+      /* 便签内容区 */
+      .note-content {
+        flex: 1;
+        padding: 12px 16px;
+        outline: none;
+        font-size: 14px;
+        line-height: 1.7;
+        min-height: 220px;
+        resize: none;
+        border: none;
+        background: transparent;
+        font-family: inherit;
+        color: #333;
+      }
+
+      .note-content::placeholder {
+        color: rgba(0, 0, 0, 0.3);
+      }
+
+      .note-footer {
+        padding: 6px 12px;
+        font-size: 11px;
+        opacity: 0.4;
+        display: flex;
+        justify-content: space-between;
+      }
+
+      /* 颜色选择器面板 */
+      .color-picker {
+        position: absolute;
+        top: 36px;
+        right: 4px;
+        background: white;
+        border-radius: 8px;
+        padding: 8px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+        display: none;
+        z-index: 100;
+      }
+
+      .color-picker.show {
+        display: flex;
+        gap: 6px;
+      }
+
+      .color-dot {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        cursor: pointer;
+        border: 2px solid transparent;
+        transition:
+          transform 0.15s,
+          border-color 0.15s;
+      }
+
+      .color-dot:hover {
+        transform: scale(1.2);
+        border-color: rgba(0, 0, 0, 0.2);
+      }
+
+      .color-dot.active {
+        border-color: #333;
+      }
+
+      /* === 管理面板 === */
+      .manager-panel {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 720px;
+        max-height: 80vh;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 16px 64px rgba(0, 0, 0, 0.2);
+        display: none;
+        flex-direction: column;
+        overflow: hidden;
+        z-index: 5000;
+      }
+
+      .manager-panel.show {
+        display: flex;
+      }
+
+      .manager-header {
+        padding: 20px 24px 16px;
+        border-bottom: 1px solid #eee;
+      }
+
+      .manager-header-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 16px;
+      }
+
+      .manager-header h2 {
+        font-size: 18px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .manager-close-btn {
+        width: 32px;
+        height: 32px;
+        border: none;
+        background: transparent;
+        border-radius: 6px;
+        font-size: 18px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #999;
+        transition: all 0.15s;
+      }
+
+      .manager-close-btn:hover {
+        background: #f5f5f5;
+        color: #333;
+      }
+
+      .manager-toolbar {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .search-box {
+        flex: 1;
+        padding: 8px 12px;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 14px;
+        outline: none;
+        transition: border-color 0.2s;
+        font-family: inherit;
+      }
+
+      .search-box:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+      }
+
+      .view-toggle {
+        display: flex;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        overflow: hidden;
+      }
+
+      .view-btn {
+        padding: 8px 12px;
+        border: none;
+        background: white;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.15s;
+      }
+
+      .view-btn.active {
+        background: #667eea;
+        color: white;
+      }
+
+      .view-btn:hover:not(.active) {
+        background: #f5f5f5;
+      }
+
+      .manager-tabs {
+        display: flex;
+        gap: 0;
+        padding: 0 24px;
+        border-bottom: 1px solid #eee;
+      }
+
+      .manager-tab {
+        padding: 10px 16px;
+        font-size: 13px;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        color: #999;
+        transition: all 0.15s;
+      }
+
+      .manager-tab.active {
+        color: #667eea;
+        border-color: #667eea;
+      }
+
+      .manager-tab:hover:not(.active) {
+        color: #666;
+      }
+
+      .manager-tab .count {
+        display: inline-block;
+        background: #f0f0f0;
+        border-radius: 10px;
+        padding: 1px 8px;
+        font-size: 11px;
+        margin-left: 4px;
+      }
+
+      .manager-tab.active .count {
+        background: rgba(102, 126, 234, 0.15);
+        color: #667eea;
+      }
+
+      .manager-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 16px 24px;
+      }
+
+      /* 卡片网格视图 */
+      .grid-view {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+      }
+
+      .grid-card {
+        border-radius: 8px;
+        padding: 16px;
+        cursor: pointer;
+        transition:
+          transform 0.15s,
+          box-shadow 0.15s;
+        min-height: 120px;
+        position: relative;
+      }
+
+      .grid-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+      }
+
+      .grid-card-title {
+        font-weight: 600;
+        font-size: 13px;
+        margin-bottom: 6px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .grid-card-content {
+        font-size: 12px;
+        color: rgba(0, 0, 0, 0.5);
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        line-height: 1.5;
+      }
+
+      .grid-card-meta {
+        position: absolute;
+        bottom: 8px;
+        right: 12px;
+        font-size: 10px;
+        opacity: 0.4;
+      }
+
+      .grid-card-tags {
+        display: flex;
+        gap: 4px;
+        margin-top: 8px;
+        flex-wrap: wrap;
+      }
+
+      .mini-tag {
+        font-size: 10px;
+        padding: 1px 6px;
+        border-radius: 4px;
+        background: rgba(0, 0, 0, 0.08);
+      }
+
+      /* 列表视图 */
+      .list-view {
+        display: none;
+      }
+
+      .list-view.active {
+        display: block;
+      }
+      .grid-view.active {
+        display: grid;
+      }
+
+      .list-item {
+        display: flex;
+        align-items: center;
+        padding: 12px 16px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background 0.1s;
+        border-bottom: 1px solid #f5f5f5;
+        gap: 12px;
+      }
+
+      .list-item:hover {
+        background: #f9f9f9;
+      }
+
+      .list-item-color {
+        width: 8px;
+        height: 32px;
+        border-radius: 4px;
+        flex-shrink: 0;
+      }
+
+      .list-item-body {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .list-item-title {
+        font-weight: 500;
+        font-size: 14px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .list-item-preview {
+        font-size: 12px;
+        color: #999;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .list-item-date {
+        font-size: 12px;
+        color: #bbb;
+        flex-shrink: 0;
+      }
+
+      /* 回收站卡片 */
+      .trash-card {
+        opacity: 0.6;
+      }
+
+      .trash-card .restore-btn {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        font-size: 16px;
+        cursor: pointer;
+        opacity: 0;
+        transition: opacity 0.15s;
+      }
+
+      .trash-card:hover .restore-btn {
+        opacity: 1;
+      }
+
+      /* 管理面板底栏 */
+      .manager-footer {
+        padding: 12px 24px;
+        border-top: 1px solid #eee;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .manager-footer-left {
+        font-size: 12px;
+        color: #999;
+      }
+
+      .btn-primary {
+        padding: 8px 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 13px;
+        cursor: pointer;
+        font-weight: 500;
+        transition: opacity 0.15s;
+      }
+
+      .btn-primary:hover {
+        opacity: 0.9;
+      }
+
+      /* === 设置面板（简化版） === */
+      .settings-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.3);
+        display: none;
+        z-index: 8000;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .settings-overlay.show {
+        display: flex;
+      }
+
+      .settings-panel {
+        background: white;
+        border-radius: 12px;
+        padding: 24px;
+        width: 400px;
+        box-shadow: 0 16px 64px rgba(0, 0, 0, 0.2);
+      }
+
+      .settings-panel h3 {
+        font-size: 16px;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .setting-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 0;
+        border-bottom: 1px solid #f5f5f5;
+      }
+
+      .setting-label {
+        font-size: 14px;
+      }
+
+      .setting-desc {
+        font-size: 12px;
+        color: #999;
+      }
+
+      .toggle {
+        width: 44px;
+        height: 24px;
+        background: #ddd;
+        border-radius: 12px;
+        position: relative;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+
+      .toggle.on {
+        background: #667eea;
+      }
+
+      .toggle::after {
+        content: "";
+        width: 20px;
+        height: 20px;
+        background: white;
+        border-radius: 50%;
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        transition: transform 0.2s;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+      }
+
+      .toggle.on::after {
+        transform: translateX(20px);
+      }
+
+      /* === Toast 通知 === */
+      .toast {
+        position: fixed;
+        bottom: 70px;
+        left: 50%;
+        transform: translateX(-50%) translateY(20px);
+        background: rgba(44, 44, 44, 0.95);
+        color: white;
+        padding: 10px 24px;
+        border-radius: 8px;
+        font-size: 13px;
+        opacity: 0;
+        transition: all 0.3s;
+        z-index: 99999;
+        pointer-events: none;
+      }
+
+      .toast.show {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
+
+      /* === 提示气泡 === */
+      .tooltip {
+        position: fixed;
+        background: rgba(30, 30, 30, 0.9);
+        color: white;
+        padding: 4px 10px;
+        border-radius: 4px;
+        font-size: 11px;
+        pointer-events: none;
+        z-index: 99999;
+        display: none;
+      }
+
+      /* === 响应式 === */
+      @media (max-width: 768px) {
+        .manager-panel {
+          width: 95vw;
+          max-height: 90vh;
+        }
+
+        .grid-view {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+
+      @media (max-width: 480px) {
+        .grid-view {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="desktop" id="desktop">
+      <!-- 便签窗口们将在此动态创建 -->
+    </div>
+
+    <!-- 管理面板 -->
+    <div class="manager-panel" id="managerPanel">
+      <div class="manager-header">
+        <div class="manager-header-top">
+          <h2>📋 便签管理</h2>
+          <button class="manager-close-btn" onclick="toggleManager()">✕</button>
+        </div>
+        <div class="manager-toolbar">
+          <input
+            type="text"
+            class="search-box"
+            id="searchBox"
+            placeholder="🔍 搜索便签内容..."
+          />
+          <div class="view-toggle">
+            <button
+              class="view-btn active"
+              data-view="grid"
+              onclick="switchView('grid')"
+            >
+              ▦
+            </button>
+            <button
+              class="view-btn"
+              data-view="list"
+              onclick="switchView('list')"
+            >
+              ☰
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="manager-tabs">
+        <div
+          class="manager-tab active"
+          data-tab="all"
+          onclick="switchTab('all')"
+        >
+          全部 <span class="count" id="countAll">0</span>
+        </div>
+        <div class="manager-tab" data-tab="trash" onclick="switchTab('trash')">
+          🗑️ 回收站 <span class="count" id="countTrash">0</span>
+        </div>
+      </div>
+      <div class="manager-body" id="managerBody">
+        <!-- 动态渲染 -->
+      </div>
+      <div class="manager-footer">
+        <span class="manager-footer-left" id="footerInfo">共 0 个便签</span>
+        <button class="btn-primary" onclick="createNote()">➕ 新建便签</button>
+      </div>
+    </div>
+
+    <!-- 设置面板 -->
+    <div
+      class="settings-overlay"
+      id="settingsOverlay"
+      onclick="closeSettings(event)"
+    >
+      <div class="settings-panel" onclick="event.stopPropagation()">
+        <h3>⚙️ 设置</h3>
+        <div class="setting-row">
+          <div>
+            <div class="setting-label">开机自启动</div>
+            <div class="setting-desc">电脑启动时自动打开便签</div>
+          </div>
+          <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+        </div>
+        <div class="setting-row">
+          <div>
+            <div class="setting-label">自动更新</div>
+            <div class="setting-desc">检测到新版本时自动更新</div>
+          </div>
+          <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+        </div>
+        <div class="setting-row">
+          <div>
+            <div class="setting-label">默认颜色</div>
+            <div class="setting-desc">新建便签的默认颜色</div>
+          </div>
+          <div style="display: flex; gap: 4px">
+            <span
+              class="color-dot"
+              style="
+                background: #fff176;
+                width: 20px;
+                height: 20px;
+                border: 2px solid #333;
+              "
+            ></span>
+          </div>
+        </div>
+        <div class="setting-row" style="border: none">
+          <div>
+            <div class="setting-label">存储模式</div>
+            <div class="setting-desc">当前：本地 JSON（预留远程 API）</div>
+          </div>
+          <span style="font-size: 12px; color: #999">local</span>
+        </div>
+        <div
+          style="
+            margin-top: 16px;
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+          "
+        >
+          <button
+            style="
+              padding: 8px 16px;
+              border: 1px solid #ddd;
+              background: white;
+              border-radius: 6px;
+              cursor: pointer;
+              font-size: 13px;
+            "
+            onclick="exportData()"
+          >
+            📤 导出数据
+          </button>
+          <button
+            style="
+              padding: 8px 16px;
+              border: 1px solid #ddd;
+              background: white;
+              border-radius: 6px;
+              cursor: pointer;
+              font-size: 13px;
+            "
+            onclick="showToast('导入功能 - 开发中')"
+          >
+            📥 导入数据
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 系统托盘 -->
+    <div class="taskbar">
+      <div class="taskbar-left">
+        <div
+          class="tray-icon"
+          id="trayIcon"
+          onclick="toggleTrayMenu()"
+          oncontextmenu="
+            toggleTrayMenu();
+            return false;
+          "
+          title="桌面便签"
+        >
+          📝
+        </div>
+        <div class="tray-icon" onclick="toggleManager()" title="管理面板">
+          📋
+        </div>
+      </div>
+      <div class="taskbar-right">
+        <span id="clock"></span>
+      </div>
+    </div>
+
+    <!-- 托盘右键菜单 -->
+    <div class="tray-menu" id="trayMenu">
+      <div
+        class="tray-menu-item"
+        onclick="
+          createNote();
+          closeTrayMenu();
+        "
+      >
+        ➕ 新建便签
+      </div>
+      <div class="tray-menu-divider"></div>
+      <div
+        class="tray-menu-item"
+        onclick="
+          showAllNotes();
+          closeTrayMenu();
+        "
+      >
+        👁️ 显示所有便签
+      </div>
+      <div
+        class="tray-menu-item"
+        onclick="
+          hideAllNotes();
+          closeTrayMenu();
+        "
+      >
+        🙈 隐藏所有便签
+      </div>
+      <div class="tray-menu-divider"></div>
+      <div
+        class="tray-menu-item"
+        onclick="
+          toggleManager();
+          closeTrayMenu();
+        "
+      >
+        📋 管理面板
+      </div>
+      <div
+        class="tray-menu-item"
+        onclick="
+          openSettings();
+          closeTrayMenu();
+        "
+      >
+        ⚙️ 设置
+      </div>
+      <div class="tray-menu-divider"></div>
+      <div
+        class="tray-menu-item"
+        onclick="
+          showToast('应用已退出（原型演示）');
+          closeTrayMenu();
+        "
+      >
+        🚪 退出
+      </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        // ====== 数据模型 ======
+        const COLORS = {
+          yellow: { bg: "#fff9c4", header: "#fff176", name: "黄色" },
+          green: { bg: "#c8e6c9", header: "#81c784", name: "绿色" },
+          blue: { bg: "#bbdefb", header: "#64b5f6", name: "蓝色" },
+          pink: { bg: "#f8bbd0", header: "#f06292", name: "粉色" },
+          purple: { bg: "#e1bee7", header: "#ba68c8", name: "紫色" },
+          orange: { bg: "#ffe0b2", header: "#ffb74d", name: "橙色" },
+        };
+
+        let notes = [];
+        let trash = [];
+        let nextId = 1;
+        let currentView = "grid";
+        let currentTab = "all";
+
+        // 初始化示例便签
+        function initSampleNotes() {
+          createNoteData(
+            "📌 欢迎使用桌面便签",
+            "这是一个桌面便签原型演示。\n\n✅ 拖拽标题栏移动\n✅ 点击按钮操作\n✅ 自定义颜色\n✅ 窗口置顶",
+            "yellow",
+            80,
+            60,
+            ["示例"],
+          );
+          createNoteData(
+            "🛒 今日待办",
+            "- 完成需求文档\n- Review 代码\n- 准备周会 PPT\n- 回复邮件",
+            "green",
+            420,
+            60,
+            ["工作"],
+          );
+          createNoteData(
+            "💡 灵感记录",
+            "考虑给便签加上 Markdown 支持\n\n可以参考 Typora 的实时预览模式",
+            "blue",
+            80,
+            400,
+            ["灵感"],
+          );
+        }
+
+        function createNoteData(title, content, color, x, y, tags) {
+          const note = {
+            id: nextId++,
+            title: title || "新建便签",
+            content: content || "",
+            color: color || "yellow",
+            tags: tags || [],
+            isOnTop: false,
+            isVisible: true,
+            x: x || 80 + Math.random() * 300,
+            y: y || 60 + Math.random() * 200,
+            width: 300,
+            height: 300,
+            createdAt: new Date().toLocaleString("zh-CN"),
+            updatedAt: new Date().toLocaleString("zh-CN"),
+          };
+          notes.push(note);
+          renderNoteWindow(note);
+          updateManagerView();
+          return note;
+        }
+
+        // ====== 便签窗口渲染 ======
+        function renderNoteWindow(note) {
+          const colors = COLORS[note.color];
+          const el = document.createElement("div");
+          el.className = "note-window" + (note.isOnTop ? " on-top" : "");
+          el.id = "note-" + note.id;
+          el.style.left = note.x + "px";
+          el.style.top = note.y + "px";
+          el.style.width = note.width + "px";
+          el.style.minHeight = note.height + "px";
+          el.style.background = colors.bg;
+          el.style.zIndex = note.isOnTop ? 1000 : 10;
+
+          const colorOptions = Object.entries(COLORS)
+            .map(
+              ([key, val]) =>
+                `<span class="color-dot ${key === note.color ? "active" : ""}" style="background:${val.header}" data-color="${key}"></span>`,
+            )
+            .join("");
+
+          el.innerHTML = `
+                    <div class="note-titlebar" style="background:${colors.header}" data-id="${note.id}">
+                        <div class="note-titlebar-left">
+                            <button class="note-btn" onclick="window.app.createNote()" title="新建便签">➕</button>
+                        </div>
+                        <div class="note-titlebar-right">
+                            <button class="note-btn" onclick="window.app.toggleColorPicker(${note.id})" title="颜色">🎨</button>
+                            <button class="note-btn ${note.isOnTop ? "pin-active" : ""}" onclick="window.app.togglePin(${note.id})" title="置顶">📌</button>
+                            <button class="note-btn" onclick="window.app.deleteNote(${note.id})" title="删除">🗑️</button>
+                            <button class="note-btn" onclick="window.app.hideNote(${note.id})" title="关闭">✕</button>
+                        </div>
+                    </div>
+                    <div class="color-picker" id="colorPicker-${note.id}">${colorOptions}</div>
+                    <textarea class="note-content" placeholder="输入便签内容..." data-id="${note.id}">${note.content}</textarea>
+                    <div class="note-footer">
+                        <span>${note.tags.map((t) => "#" + t).join(" ")}</span>
+                        <span>${note.updatedAt}</span>
+                    </div>
+                `;
+
+          document.getElementById("desktop").appendChild(el);
+
+          // 拖拽
+          makeDraggable(el, el.querySelector(".note-titlebar"), note);
+
+          // 内容编辑
+          const textarea = el.querySelector(".note-content");
+          textarea.addEventListener("input", function () {
+            note.content = this.value;
+            note.updatedAt = new Date().toLocaleString("zh-CN");
+            note.title =
+              this.value.split("\n")[0].substring(0, 20) || "新建便签";
+            updateManagerView();
+          });
+
+          // 颜色选择
+          el.querySelectorAll(".color-dot").forEach((dot) => {
+            dot.addEventListener("click", () => {
+              const newColor = dot.dataset.color;
+              note.color = newColor;
+              const c = COLORS[newColor];
+              el.style.background = c.bg;
+              el.querySelector(".note-titlebar").style.background = c.header;
+              el.querySelectorAll(".color-dot").forEach((d) =>
+                d.classList.remove("active"),
+              );
+              dot.classList.add("active");
+              el.querySelector(".color-picker").classList.remove("show");
+              updateManagerView();
+            });
+          });
+
+          // 点击聚焦
+          el.addEventListener("mousedown", () => {
+            if (!note.isOnTop) {
+              document
+                .querySelectorAll(".note-window:not(.on-top)")
+                .forEach((w) => (w.style.zIndex = 10));
+              el.style.zIndex = 100;
+            }
+          });
+        }
+
+        // 拖拽逻辑
+        function makeDraggable(el, handle, note) {
+          let startX, startY, origX, origY;
+
+          handle.addEventListener("mousedown", function (e) {
+            if (e.target.closest(".note-btn")) return;
+            e.preventDefault();
+            startX = e.clientX;
+            startY = e.clientY;
+            origX = el.offsetLeft;
+            origY = el.offsetTop;
+            el.classList.add("dragging");
+
+            function onMove(ev) {
+              const dx = ev.clientX - startX;
+              const dy = ev.clientY - startY;
+              note.x = origX + dx;
+              note.y = origY + dy;
+              el.style.left = note.x + "px";
+              el.style.top = note.y + "px";
+            }
+
+            function onUp() {
+              el.classList.remove("dragging");
+              document.removeEventListener("mousemove", onMove);
+              document.removeEventListener("mouseup", onUp);
+            }
+
+            document.addEventListener("mousemove", onMove);
+            document.addEventListener("mouseup", onUp);
+          });
+        }
+
+        // ====== 全局操作 ======
+        window.app = {
+          createNote: function () {
+            createNoteData(
+              "",
+              "",
+              "yellow",
+              80 + Math.random() * 400,
+              60 + Math.random() * 200,
+            );
+            showToast("✅ 新建便签");
+          },
+
+          deleteNote: function (id) {
+            const idx = notes.findIndex((n) => n.id === id);
+            if (idx === -1) return;
+            const note = notes.splice(idx, 1)[0];
+            note.deletedAt = new Date().toLocaleString("zh-CN");
+            trash.push(note);
+            const el = document.getElementById("note-" + id);
+            if (el) el.remove();
+            updateManagerView();
+            showToast("🗑️ 便签已移到回收站");
+          },
+
+          hideNote: function (id) {
+            const note = notes.find((n) => n.id === id);
+            if (note) note.isVisible = false;
+            const el = document.getElementById("note-" + id);
+            if (el) el.style.display = "none";
+            showToast("便签已隐藏");
+          },
+
+          togglePin: function (id) {
+            const note = notes.find((n) => n.id === id);
+            if (!note) return;
+            note.isOnTop = !note.isOnTop;
+            const el = document.getElementById("note-" + id);
+            if (el) {
+              el.classList.toggle("on-top", note.isOnTop);
+              el.style.zIndex = note.isOnTop ? 1000 : 10;
+              el.querySelector(".note-btn:nth-child(2)").classList.toggle(
+                "pin-active",
+                note.isOnTop,
+              ); // fixed selector
+              const pinBtn = el.querySelectorAll(
+                ".note-titlebar-right .note-btn",
+              )[1];
+              if (pinBtn) pinBtn.classList.toggle("pin-active", note.isOnTop);
+            }
+            showToast(note.isOnTop ? "📌 已置顶" : "取消置顶");
+          },
+
+          toggleColorPicker: function (id) {
+            const picker = document.getElementById("colorPicker-" + id);
+            if (picker) picker.classList.toggle("show");
+          },
+
+          restoreNote: function (id) {
+            const idx = trash.findIndex((n) => n.id === id);
+            if (idx === -1) return;
+            const note = trash.splice(idx, 1)[0];
+            delete note.deletedAt;
+            note.isVisible = true;
+            notes.push(note);
+            renderNoteWindow(note);
+            updateManagerView();
+            showToast("✅ 便签已恢复");
+          },
+        };
+
+        // 暴露全局函数
+        window.createNote = window.app.createNote;
+
+        window.showAllNotes = function () {
+          notes.forEach((n) => {
+            n.isVisible = true;
+            const el = document.getElementById("note-" + n.id);
+            if (el) el.style.display = "flex";
+          });
+          showToast("👁️ 显示所有便签");
+        };
+
+        window.hideAllNotes = function () {
+          notes.forEach((n) => {
+            n.isVisible = false;
+            const el = document.getElementById("note-" + n.id);
+            if (el) el.style.display = "none";
+          });
+          showToast("🙈 已隐藏所有便签");
+        };
+
+        // ====== 管理面板 ======
+        window.toggleManager = function () {
+          document.getElementById("managerPanel").classList.toggle("show");
+          updateManagerView();
+        };
+
+        window.switchView = function (view) {
+          currentView = view;
+          document
+            .querySelectorAll(".view-btn")
+            .forEach((b) =>
+              b.classList.toggle("active", b.dataset.view === view),
+            );
+          updateManagerView();
+        };
+
+        window.switchTab = function (tab) {
+          currentTab = tab;
+          document
+            .querySelectorAll(".manager-tab")
+            .forEach((t) =>
+              t.classList.toggle("active", t.dataset.tab === tab),
+            );
+          updateManagerView();
+        };
+
+        function updateManagerView() {
+          const body = document.getElementById("managerBody");
+          const searchQuery = document
+            .getElementById("searchBox")
+            .value.toLowerCase();
+
+          document.getElementById("countAll").textContent = notes.length;
+          document.getElementById("countTrash").textContent = trash.length;
+          document.getElementById("footerInfo").textContent =
+            `共 ${notes.length} 个便签`;
+
+          let items = currentTab === "trash" ? trash : notes;
+          if (searchQuery) {
+            items = items.filter(
+              (n) =>
+                n.content.toLowerCase().includes(searchQuery) ||
+                n.title.toLowerCase().includes(searchQuery),
+            );
+          }
+
+          if (currentView === "grid") {
+            body.innerHTML =
+              '<div class="grid-view active">' +
+              items
+                .map((n) => {
+                  const colors = COLORS[n.color];
+                  const isTrash = currentTab === "trash";
+                  return `
+                            <div class="grid-card ${isTrash ? "trash-card" : ""}" style="background:${colors.bg}"
+                                 ondblclick="${isTrash ? `window.app.restoreNote(${n.id})` : `(function(){ var el=document.getElementById('note-${n.id}'); if(el){el.style.display='flex';} var note=window._notes.find(x=>x.id===${n.id}); if(note)note.isVisible=true; })()`}">
+                                ${isTrash ? `<span class="restore-btn" onclick="window.app.restoreNote(${n.id})">♻️</span>` : ""}
+                                <div class="grid-card-title">${escapeHtml(n.title)}</div>
+                                <div class="grid-card-content">${escapeHtml(n.content)}</div>
+                                <div class="grid-card-tags">${n.tags.map((t) => `<span class="mini-tag">#${t}</span>`).join("")}</div>
+                                <div class="grid-card-meta">${n.updatedAt}</div>
+                            </div>`;
+                })
+                .join("") +
+              "</div>";
+          } else {
+            body.innerHTML =
+              '<div class="list-view active">' +
+              items
+                .map((n) => {
+                  const colors = COLORS[n.color];
+                  const isTrash = currentTab === "trash";
+                  return `
+                            <div class="list-item"
+                                 ondblclick="${isTrash ? `window.app.restoreNote(${n.id})` : `(function(){ var el=document.getElementById('note-${n.id}'); if(el){el.style.display='flex';} })()`}">
+                                <div class="list-item-color" style="background:${colors.header}"></div>
+                                <div class="list-item-body">
+                                    <div class="list-item-title">${escapeHtml(n.title)}</div>
+                                    <div class="list-item-preview">${escapeHtml(n.content.split("\n")[0])}</div>
+                                </div>
+                                <div class="list-item-date">${n.updatedAt}</div>
+                                ${isTrash ? `<span style="cursor:pointer;font-size:16px" onclick="window.app.restoreNote(${n.id})">♻️</span>` : ""}
+                            </div>`;
+                })
+                .join("") +
+              "</div>";
+          }
+        }
+
+        // 搜索框
+        document
+          .getElementById("searchBox")
+          .addEventListener("input", updateManagerView);
+
+        // ====== 托盘菜单 ======
+        window.toggleTrayMenu = function () {
+          document.getElementById("trayMenu").classList.toggle("show");
+        };
+
+        window.closeTrayMenu = function () {
+          document.getElementById("trayMenu").classList.remove("show");
+        };
+
+        document.addEventListener("click", function (e) {
+          if (
+            !e.target.closest("#trayMenu") &&
+            !e.target.closest("#trayIcon")
+          ) {
+            closeTrayMenu();
+          }
+          // 关闭颜色选择器
+          if (
+            !e.target.closest(".color-picker") &&
+            !e.target.closest(".note-btn")
+          ) {
+            document
+              .querySelectorAll(".color-picker.show")
+              .forEach((p) => p.classList.remove("show"));
+          }
+        });
+
+        // ====== 设置 ======
+        window.openSettings = function () {
+          document.getElementById("settingsOverlay").classList.add("show");
+        };
+
+        window.closeSettings = function (e) {
+          if (e.target === document.getElementById("settingsOverlay")) {
+            document.getElementById("settingsOverlay").classList.remove("show");
+          }
+        };
+
+        window.exportData = function () {
+          const data = JSON.stringify({ notes, trash }, null, 2);
+          const blob = new Blob([data], { type: "application/json" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "sticky-notes-export.json";
+          a.click();
+          URL.revokeObjectURL(url);
+          showToast("📤 数据已导出");
+        };
+
+        // ====== 工具函数 ======
+        function escapeHtml(text) {
+          const div = document.createElement("div");
+          div.textContent = text;
+          return div.innerHTML;
+        }
+
+        window.showToast = function (msg) {
+          const toast = document.getElementById("toast");
+          toast.textContent = msg;
+          toast.classList.add("show");
+          setTimeout(() => toast.classList.remove("show"), 2000);
+        };
+
+        // 时钟
+        function updateClock() {
+          const now = new Date();
+          document.getElementById("clock").textContent = now.toLocaleTimeString(
+            "zh-CN",
+            { hour: "2-digit", minute: "2-digit" },
+          );
+        }
+        updateClock();
+        setInterval(updateClock, 30000);
+
+        // 暴露 notes 给管理面板的 inline handler
+        window._notes = notes;
+
+        // ====== 初始化 ======
+        initSampleNotes();
+        updateManagerView();
+      });
+    </script>
+  </body>
+</html>
