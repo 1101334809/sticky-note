@@ -16,7 +16,6 @@ import {
   DocumentOutline,
   GridOutline,
   ListOutline,
-  ColorPaletteOutline,
   DownloadOutline,
   SearchOutline,
 } from '@vicons/ionicons5'
@@ -311,10 +310,20 @@ async function downloadZip() {
           </NButton>
         </NButtonGroup>
 
-        <NColorPicker v-model:value="fillColor" size="small" style="width: 80px" :show-alpha="false" />
-
-        <NButton size="small" @click="applyColor" :disabled="!isLoaded">
-          <template #icon><NIcon><ColorPaletteOutline /></NIcon></template>
+        <NButton size="small" @click="applyColor" :disabled="!isLoaded" class="color-btn">
+          <template #icon>
+            <NColorPicker
+              v-model:value="fillColor"
+              size="small"
+              :show-alpha="false"
+              :swatches="['#667eea', '#f56565', '#48bb78', '#ed8936', '#4299e1', '#9f7aea', '#000000', '#ffffff']"
+              :modes="['hex']"
+            >
+              <template #label>
+                <div class="color-dot" :style="{ background: fillColor }" />
+              </template>
+            </NColorPicker>
+          </template>
           改色
         </NButton>
 
@@ -495,5 +504,24 @@ async function downloadZip() {
   font-size: 10px;
   font-weight: 700;
   flex-shrink: 0;
+}
+
+/* 改色按钮 */
+.color-btn {
+  gap: 6px;
+}
+.color-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--border-light);
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+.color-dot:hover {
+  transform: scale(1.15);
+}
+.color-btn :deep(.n-color-picker) {
+  width: auto !important;
 }
 </style>

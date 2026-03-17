@@ -73,20 +73,6 @@ ipcMain.handle('file:readText', async (_event, filePath: string) => {
   return fs.readFileSync(filePath, 'utf-8')
 })
 
-// 批量获取文件信息
-ipcMain.handle('file:getInfo', async (_event, paths: string[]) => {
-  const fs = await import('node:fs')
-  return paths.map(p => {
-    try {
-      const stats = fs.statSync(p)
-      const name = path.basename(p)
-      const ext = path.extname(p).replace('.', '').toUpperCase()
-      return { path: p, name, size: stats.size, type: ext, exists: true }
-    } catch {
-      return { path: p, name: path.basename(p), size: 0, type: '', exists: false }
-    }
-  })
-})
 
 // 递归列出文件夹中的图片文件
 const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.avif', '.tiff', '.tif', '.bmp', '.ico', '.svg']

@@ -4,6 +4,7 @@ import { useRouter, useRoute } from 'vue-router'
 import {
   NConfigProvider,
   NMessageProvider,
+  NDialogProvider,
   NLayout,
   NLayoutSider,
   NMenu,
@@ -54,7 +55,7 @@ function handleDragLeave(e: DragEvent) {
   if (!e.relatedTarget) isDragging.value = false
 }
 
-function handleDrop(e: DragEvent) {
+async function handleDrop(e: DragEvent) {
   e.preventDefault()
   e.stopPropagation()
   isDragging.value = false
@@ -62,14 +63,40 @@ function handleDrop(e: DragEvent) {
   const files = e.dataTransfer?.files
   if (!files || files.length === 0) return
 
-  const paths: string[] = []
+  const rawPaths: string[] = []
   for (let i = 0; i < files.length; i++) {
     const filePath = (files[i] as any).path
-    if (filePath) paths.push(filePath)
+    if (filePath) rawPaths.push(filePath)
   }
 
-  if (paths.length > 0) {
-    droppedFiles.value = paths
+  if (rawPaths.length === 0) return
+
+  // 检测文件夹：通过 IPC 获取文件信息，若是文件夹则递归展开
+  try {
+    const allPaths: string[] = []
+    const infos = await window.ipcRenderer.invoke('file:getInfo', rawPaths)
+
+    for (const info of infos) {
+      if (!info.exists) continue
+      if (info.isDirectory) {
+        // 文件夹 → 递归列出其中的图片文件
+        try {
+          const folderFiles: string[] = await window.ipcRenderer.invoke('file:listImages', info.path)
+          allPaths.push(...folderFiles)
+        } catch {
+          // 读取失败，跳过
+        }
+      } else {
+        allPaths.push(info.path)
+      }
+    }
+
+    if (allPaths.length > 0) {
+      droppedFiles.value = allPaths
+    }
+  } catch {
+    // IPC 不可用时回退到原始路径
+    droppedFiles.value = rawPaths
   }
 }
 
@@ -119,6 +146,7 @@ function handleMenuUpdate(key: string) {
 <template>
   <NConfigProvider :theme="currentTheme">
     <NMessageProvider>
+    <NDialogProvider>
       <NLayout has-sider style="height: 100vh">
         <!-- 侧栏 -->
         <NLayoutSider
@@ -190,6 +218,7 @@ function handleMenuUpdate(key: string) {
           </router-view>
         </NLayout>
       </NLayout>
+    </NDialogProvider>
     </NMessageProvider>
   </NConfigProvider>
 </template>

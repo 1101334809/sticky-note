@@ -106,9 +106,16 @@ export function registerCompressHandlers() {
         const stats = fs.statSync(p)
         const name = path.basename(p)
         const ext = path.extname(p).toLowerCase().slice(1).toUpperCase()
-        return { path: p, name, size: stats.size, type: ext, exists: true }
+        return {
+          path: p,
+          name,
+          size: stats.size,
+          type: ext,
+          exists: true,
+          isDirectory: stats.isDirectory(),
+        }
       } catch {
-        return { path: p, name: path.basename(p), size: 0, type: '', exists: false }
+        return { path: p, name: path.basename(p), size: 0, type: '', exists: false, isDirectory: false }
       }
     })
   })

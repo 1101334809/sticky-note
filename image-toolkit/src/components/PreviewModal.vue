@@ -37,7 +37,7 @@ const dragStartY = ref(0)
 const activeTab = ref('preview')
 
 // ====== 背景 ======
-const bgMode = ref<'checker' | 'white' | 'dark'>('checker')
+const bgMode = ref<'checker' | 'white' | 'dark'>('white')
 
 const bgStyle = computed(() => {
   switch (bgMode.value) {
