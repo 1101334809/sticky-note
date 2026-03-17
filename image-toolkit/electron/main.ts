@@ -5,6 +5,8 @@ import path from 'node:path'
 import { registerSvgHandlers } from './ipc/svg.handler'
 import { registerCompressHandlers } from './ipc/compress.handler'
 import { registerConvertHandlers } from './ipc/convert.handler'
+import { registerSystemHandlers } from './ipc/system.handler'
+import { registerConfigHandlers } from './core/config'
 
 const require = createRequire(import.meta.url)
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -71,6 +73,43 @@ ipcMain.handle('file:readText', async (_event, filePath: string) => {
   return fs.readFileSync(filePath, 'utf-8')
 })
 
+// 批量获取文件信息
+ipcMain.handle('file:getInfo', async (_event, paths: string[]) => {
+  const fs = await import('node:fs')
+  return paths.map(p => {
+    try {
+      const stats = fs.statSync(p)
+      const name = path.basename(p)
+      const ext = path.extname(p).replace('.', '').toUpperCase()
+      return { path: p, name, size: stats.size, type: ext, exists: true }
+    } catch {
+      return { path: p, name: path.basename(p), size: 0, type: '', exists: false }
+    }
+  })
+})
+
+// 递归列出文件夹中的图片文件
+const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.avif', '.tiff', '.tif', '.bmp', '.ico', '.svg']
+ipcMain.handle('file:listImages', async (_event, folderPath: string) => {
+  const fs = await import('node:fs')
+  const results: string[] = []
+
+  function walk(dir: string) {
+    const entries = fs.readdirSync(dir, { withFileTypes: true })
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name)
+      if (entry.isDirectory()) {
+        walk(fullPath)
+      } else if (IMAGE_EXTENSIONS.includes(path.extname(entry.name).toLowerCase())) {
+        results.push(fullPath)
+      }
+    }
+  }
+
+  walk(folderPath)
+  return results
+})
+
 // 主题切换
 ipcMain.handle('theme:toggle', async (_event, isDark: boolean) => {
   nativeTheme.themeSource = isDark ? 'dark' : 'light'
@@ -83,6 +122,8 @@ ipcMain.handle('theme:toggle', async (_event, isDark: boolean) => {
 registerSvgHandlers()
 registerCompressHandlers()
 registerConvertHandlers()
+registerSystemHandlers()
+registerConfigHandlers()
 
 // ====== App lifecycle ======
 app.on('window-all-closed', () => {

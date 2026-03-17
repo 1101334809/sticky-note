@@ -50,25 +50,44 @@ export function registerSvgHandlers() {
     return { saved, total: files.length }
   })
 
-  // SVG → PNG 导出（多倍率）
+  // SVG → PNG 导出（多倍率 + 自定义像素尺寸）
   ipcMain.handle('svg:exportPng', async (_event, options: {
     svgContent: string
     outputDir: string
     fileName: string
-    scales: number[]
+    mode: 'scale' | 'custom'
+    scales?: number[]
+    customWidth?: number
+    customHeight?: number
   }) => {
-    // 使用 Sharp 进行 SVG → PNG 转换
     try {
       const results: string[] = []
 
-      for (const scale of options.scales) {
+      if (options.mode === 'scale' && options.scales) {
+        // 倍率模式
+        for (const scale of options.scales) {
+          const svgBuffer = Buffer.from(options.svgContent)
+          const outputPath = path.join(
+            options.outputDir,
+            `${options.fileName}@${scale}x.png`
+          )
+
+          await sharp(svgBuffer, { density: 72 * scale })
+            .png()
+            .toFile(outputPath)
+
+          results.push(outputPath)
+        }
+      } else if (options.mode === 'custom' && options.customWidth && options.customHeight) {
+        // 自定义像素尺寸模式
         const svgBuffer = Buffer.from(options.svgContent)
         const outputPath = path.join(
           options.outputDir,
-          `${options.fileName}@${scale}x.png`
+          `${options.fileName}_${options.customWidth}x${options.customHeight}.png`
         )
 
-        await sharp(svgBuffer, { density: 72 * scale })
+        await sharp(svgBuffer)
+          .resize(options.customWidth, options.customHeight, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
           .png()
           .toFile(outputPath)
 
@@ -76,6 +95,53 @@ export function registerSvgHandlers() {
       }
 
       return { success: true, files: results }
+    } catch (e: any) {
+      return { success: false, error: e.message }
+    }
+  })
+
+  // SVG 批量打包下载（简易 ZIP，使用目录打包）
+  ipcMain.handle('svg:downloadZip', async (_event, options: {
+    files: Array<{ name: string; content: string }>
+    outputDir: string
+    zipName: string
+  }) => {
+    try {
+      // 将所有 SVG 内容写入临时目录，然后用 zlib 打包
+      const outputPath = path.join(options.outputDir, options.zipName)
+      const { execSync } = await import('node:child_process')
+
+      // 创建临时目录
+      const tmpDir = path.join(options.outputDir, '.svg-bundle-tmp')
+      if (!fs.existsSync(tmpDir)) {
+        fs.mkdirSync(tmpDir, { recursive: true })
+      }
+
+      // 写入文件
+      for (const file of options.files) {
+        fs.writeFileSync(path.join(tmpDir, file.name), file.content, 'utf-8')
+      }
+
+      // 使用 PowerShell 压缩为 ZIP (Windows)
+      try {
+        execSync(`powershell -Command "Compress-Archive -Path '${tmpDir}\\*' -DestinationPath '${outputPath}' -Force"`, { timeout: 30000 })
+      } catch {
+        // 备用方案：直接复制目录
+        const bundleDir = path.join(options.outputDir, 'svg-bundle')
+        if (!fs.existsSync(bundleDir)) {
+          fs.mkdirSync(bundleDir, { recursive: true })
+        }
+        for (const file of options.files) {
+          fs.writeFileSync(path.join(bundleDir, file.name), file.content, 'utf-8')
+        }
+        // 清理临时目录
+        fs.rmSync(tmpDir, { recursive: true, force: true })
+        return { success: true, outputPath: bundleDir }
+      }
+
+      // 清理临时目录
+      fs.rmSync(tmpDir, { recursive: true, force: true })
+      return { success: true, outputPath }
     } catch (e: any) {
       return { success: false, error: e.message }
     }

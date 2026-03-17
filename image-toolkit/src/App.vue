@@ -10,7 +10,6 @@ import {
   NIcon,
   NButton,
   NTooltip,
-  darkTheme,
   type MenuOption,
 } from 'naive-ui'
 import {
@@ -21,9 +20,23 @@ import {
   MoonOutline,
 } from '@vicons/ionicons5'
 import { h } from 'vue'
+import { useTheme } from './composables/useTheme'
+import { useKeyboard } from './composables/useKeyboard'
+import { useSettingsStore } from './stores/settings.store'
 
 const router = useRouter()
 const route = useRoute()
+
+// ====== 设置初始化 ======
+const settingsStore = useSettingsStore()
+settingsStore.init()
+
+// ====== 主题（使用 composable） ======
+const { isDark, currentTheme, siderBg, logoBorder, toggleTheme, initFromSettings } = useTheme()
+initFromSettings()
+
+// ====== 全局快捷键 (T-045) ======
+useKeyboard()
 
 // ====== 全局拖拽分发 ======
 const isDragging = ref(false)
@@ -38,7 +51,6 @@ function handleDragOver(e: DragEvent) {
 function handleDragLeave(e: DragEvent) {
   e.preventDefault()
   e.stopPropagation()
-  // 只在离开窗口时关闭
   if (!e.relatedTarget) isDragging.value = false
 }
 
@@ -72,17 +84,6 @@ onUnmounted(() => {
   document.removeEventListener('dragleave', handleDragLeave)
   document.removeEventListener('drop', handleDrop)
 })
-
-// ====== 主题切换 ======
-const isDark = ref(false)
-const currentTheme = computed(() => isDark.value ? darkTheme : null)
-const siderBg = computed(() => isDark.value ? '#18181c' : '#f8f8fa')
-const logoBorder = computed(() => isDark.value ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)')
-
-function toggleTheme() {
-  isDark.value = !isDark.value
-  window.ipcRenderer?.invoke('theme:toggle', isDark.value)
-}
 
 // 暴露给子组件
 provide('droppedFiles', droppedFiles)
@@ -131,7 +132,7 @@ function handleMenuUpdate(key: string) {
           <!-- Logo -->
           <div :style="{ padding: '20px 16px', textAlign: 'center', borderBottom: '1px solid ' + logoBorder }">
             <span style="font-size: 1.4em">🧰</span>
-            <span style="font-weight: 700; margin-left: 8px; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 1.1em">Universal Toolkit</span>
+            <span style="font-weight: 700; margin-left: 8px; background: var(--accent-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 1.1em">Universal Toolkit</span>
           </div>
 
           <!-- 导航菜单 -->
@@ -168,15 +169,15 @@ function handleMenuUpdate(key: string) {
               v-if="isDragging"
               style="
                 position: absolute; inset: 0; z-index: 100;
-                background: rgba(102,126,234,0.15);
+                background: var(--accent-light);
                 backdrop-filter: blur(4px);
                 display: flex; align-items: center; justify-content: center;
-                border: 3px dashed #667eea; border-radius: 8px; margin: 8px;
+                border: 3px dashed var(--accent); border-radius: 8px; margin: 8px;
               "
             >
               <div style="text-align: center">
                 <div style="font-size: 3em; margin-bottom: 8px">📥</div>
-                <p style="color: #667eea; font-size: 1.2em; font-weight: 600">松开鼠标放入文件</p>
+                <p style="color: var(--accent); font-size: 1.2em; font-weight: 600">松开鼠标放入文件</p>
               </div>
             </div>
           </Transition>
@@ -206,6 +207,8 @@ html, body, #app {
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
                'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  color: var(--text-primary);
+  background-color: var(--bg-page);
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 /* 滚动条 */
@@ -216,11 +219,11 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(128,128,128,0.3);
+  background: var(--scrollbar-thumb);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(128,128,128,0.5);
+  background: var(--scrollbar-thumb-hover);
 }
 /* 页面过渡动画 */
 .page-slide-enter-active,
@@ -234,14 +237,5 @@ body {
 .page-slide-leave-to {
   opacity: 0;
   transform: translateX(-12px);
-}
-/* 拖拽遮罩动画 */
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.2s ease;
-}
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
 }
 </style>

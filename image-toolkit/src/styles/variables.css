@@ -1,0 +1,76 @@
+/* ==========================================
+ * Image Toolkit — CSS 设计变量
+ * 浅色/深色双主题 Token 系统
+ * ========================================== */
+
+/* 浅色模式（默认） */
+:root {
+  /* 文字 */
+  --text-primary: rgba(0, 0, 0, 0.85);
+  --text-secondary: rgba(0, 0, 0, 0.55);
+  --text-muted: rgba(0, 0, 0, 0.35);
+
+  /* 背景 */
+  --bg-page: #ffffff;
+  --bg-card: rgba(0, 0, 0, 0.02);
+  --bg-card-hover: rgba(0, 0, 0, 0.05);
+  --bg-sider: #f8f8fa;
+  --bg-empty: rgba(0, 0, 0, 0.01);
+
+  /* 边框 */
+  --border-light: rgba(0, 0, 0, 0.06);
+  --border-dashed: rgba(0, 0, 0, 0.15);
+
+  /* 强调色 */
+  --accent: #667eea;
+  --accent-hover: #5a6fd6;
+  --accent-light: rgba(102, 126, 234, 0.15);
+  --accent-gradient: linear-gradient(135deg, #667eea, #764ba2);
+
+  /* 状态色 */
+  --success: #4caf50;
+  --success-light: rgba(76, 175, 80, 0.12);
+  --error: #f44336;
+  --error-light: rgba(244, 67, 54, 0.12);
+  --warning: #ff9800;
+  --warning-light: rgba(255, 152, 0, 0.12);
+
+  /* 滚动条 */
+  --scrollbar-thumb: rgba(0, 0, 0, 0.15);
+  --scrollbar-thumb-hover: rgba(0, 0, 0, 0.25);
+
+  /* 阴影 */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-hover: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+/* 深色模式 */
+[data-theme="dark"] {
+  /* 文字 */
+  --text-primary: rgba(255, 255, 255, 0.9);
+  --text-secondary: rgba(255, 255, 255, 0.6);
+  --text-muted: rgba(255, 255, 255, 0.35);
+
+  /* 背景 */
+  --bg-page: #0f1123;
+  --bg-card: rgba(255, 255, 255, 0.03);
+  --bg-card-hover: rgba(255, 255, 255, 0.06);
+  --bg-sider: #18181c;
+  --bg-empty: rgba(255, 255, 255, 0.02);
+
+  /* 边框 */
+  --border-light: rgba(255, 255, 255, 0.06);
+  --border-dashed: rgba(255, 255, 255, 0.15);
+
+  /* 强调色保持不变 */
+
+  /* 滚动条 */
+  --scrollbar-thumb: rgba(255, 255, 255, 0.15);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.25);
+
+  /* 阴影 */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --shadow-hover: 0 4px 16px rgba(0, 0, 0, 0.4);
+}

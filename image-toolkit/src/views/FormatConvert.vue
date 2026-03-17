@@ -1,42 +1,33 @@
 <script setup lang="ts">
+/**
+ * 格式转换视图 — 重构版
+ *
+ * 使用通用组件 FileList / Toolbar / OutputDirPicker
+ * 状态管理通过 fileStore
+ * T-018
+ */
 import { ref, inject, watch, type Ref } from 'vue'
-import {
-  NButton, NIcon, NSelect, NTag,
-  useMessage,
-} from 'naive-ui'
-import { FolderOpenOutline } from '@vicons/ionicons5'
-
-interface FileItem {
-  name: string
-  path: string
-  size: number
-  status: 'pending' | 'processing' | 'done' | 'error'
-  newName?: string
-  convertedSize?: number
-  error?: string
-}
+import { NButton, NIcon, NSelect, NSwitch, NInputNumber, NTooltip, useMessage, useDialog } from 'naive-ui'
+import { FolderOpenOutline, FolderOutline, LockClosedOutline, LockOpenOutline } from '@vicons/ionicons5'
+import FileList from '../components/FileList.vue'
+import Toolbar from '../components/Toolbar.vue'
+import OutputDirPicker from '../components/OutputDirPicker.vue'
+import { useFileStore } from '../stores/file.store'
+import { useUndoStore } from '../stores/undo.store'
+import { useSettingsStore } from '../stores/settings.store'
 
 const message = useMessage()
-const files = ref<FileItem[]>([])
-const isLoaded = ref(false)
-const isProcessing = ref(false)
+const dialog = useDialog()
+const fileStore = useFileStore()
+const undoStore = useUndoStore()
+const settingsStore = useSettingsStore()
 
-// 接收全局拖拽文件
-const imgExts = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif', 'tiff', 'tif', 'bmp', 'ico', 'svg']
-const droppedFiles = inject<Ref<string[]>>('droppedFiles', ref([]))
-watch(droppedFiles, async (paths) => {
-  if (!paths.length) return
-  const imgPaths = paths.filter(p => imgExts.includes(p.split('.').pop()?.toLowerCase() || ''))
-  if (imgPaths.length === 0) return
-  const fileInfos: any[] = await window.ipcRenderer.invoke('file:getInfo', imgPaths)
-  files.value = [...files.value, ...fileInfos.map((f: any) => ({
-    name: f.name, path: f.path, size: f.size, status: 'pending' as const,
-  }))]
-  isLoaded.value = true
-  message.success(`已通过拖拽添加 ${imgPaths.length} 个文件`)
-})
 const targetFormat = ref('webp')
 const presetSize = ref('')
+const lastOutputDir = ref<string | null>(null)
+const customWidth = ref<number | null>(null)
+const customHeight = ref<number | null>(null)
+const lockRatio = ref(true)
 
 const formatOptions = [
   { label: 'WebP', value: 'webp' },
@@ -68,60 +59,156 @@ const formatCards = [
   { key: 'tiff', icon: '🎞️', title: 'TIFF', desc: '高质量，印刷用途' },
 ]
 
-function formatSize(bytes: number) {
-  if (bytes === 0) return '—'
-  if (bytes < 1024) return bytes + ' B'
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
-  return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
-}
+// ====== 接收全局拖拽 ======
+const imgExts = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif', 'tiff', 'tif', 'bmp', 'ico', 'svg']
+const droppedFiles = inject<Ref<string[]>>('droppedFiles', ref([]))
 
+watch(droppedFiles, async (paths) => {
+  if (!paths.length) return
+  const imgPaths = paths.filter(p => imgExts.includes(p.split('.').pop()?.toLowerCase() || ''))
+  if (imgPaths.length === 0) return
+  const duplicateCount = await fileStore.addFilePaths(imgPaths)
+  if (duplicateCount > 0) {
+    message.info(`${duplicateCount} 个文件已存在，已跳过`)
+  }
+  message.success(`已通过拖拽添加 ${imgPaths.length - duplicateCount} 个文件`)
+})
+
+// ====== 文件操作 ======
 async function selectFiles() {
   try {
     const paths: string[] = await window.ipcRenderer.invoke('dialog:openFiles', {
-      filters: [{ name: '图片', extensions: ['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif', 'tiff', 'tif', 'bmp', 'ico', 'svg'] }],
+      filters: [{ name: '图片', extensions: imgExts }],
       properties: ['openFile', 'multiSelections'],
     })
     if (!paths.length) return
-
-    const fileInfos: any[] = await window.ipcRenderer.invoke('file:getInfo', paths)
-    files.value = fileInfos.map((f: any) => ({
-      name: f.name,
-      path: f.path,
-      size: f.size,
-      status: 'pending' as const,
-    }))
-    isLoaded.value = true
-    message.success(`已添加 ${paths.length} 个文件`)
+    const duplicateCount = await fileStore.addFilePaths(paths)
+    if (duplicateCount > 0) {
+      message.info(`${duplicateCount} 个文件已存在，已跳过`)
+    }
+    message.success(`已添加 ${paths.length - duplicateCount} 个文件`)
   } catch (e: any) {
     message.error('选择文件失败: ' + e.message)
   }
 }
 
+function handleRemoveFile(path: string) {
+  const removed = fileStore.removeFile(path)
+  if (removed) {
+    undoStore.push({
+      type: 'file:remove',
+      description: `移除了 ${removed.name}`,
+      timestamp: Date.now(),
+      undo: () => fileStore.addFiles([removed]),
+      redo: () => fileStore.removeFile(path),
+    })
+  }
+}
+
+function handleClear() {
+  const oldFiles = fileStore.clearFiles()
+  undoStore.push({
+    type: 'file:clear',
+    description: `清空了 ${oldFiles.length} 个文件`,
+    timestamp: Date.now(),
+    undo: () => fileStore.addFiles(oldFiles),
+    redo: () => fileStore.clearFiles(),
+  })
+}
+
+// ====== 文件夹加载 (T-041) ======
+async function selectFolder() {
+  try {
+    const folderPath = await window.ipcRenderer.invoke('dialog:openFolder')
+    if (!folderPath) return
+    // 递归读取文件夹中的图片
+    const paths: string[] = await window.ipcRenderer.invoke('file:listImages', folderPath)
+    if (!paths.length) {
+      message.info('该文件夹中没有支持的图片文件')
+      return
+    }
+    const duplicateCount = await fileStore.addFilePaths(paths)
+    if (duplicateCount > 0) {
+      message.info(`${duplicateCount} 个文件已存在，已跳过`)
+    }
+    message.success(`已从文件夹加载 ${paths.length - duplicateCount} 个文件`)
+  } catch (e: any) {
+    message.error('加载失败: ' + e.message)
+  }
+}
+
+// ====== 宽高联动 (T-039) ======
+function handleWidthChange(val: number | null) {
+  customWidth.value = val
+  if (val && lockRatio.value) {
+    customHeight.value = val
+  }
+}
+
+function handleHeightChange(val: number | null) {
+  customHeight.value = val
+  if (val && lockRatio.value) {
+    customWidth.value = val
+  }
+}
+
+// ====== 转换 ======
 async function startConvert() {
-  if (!files.value.length) return
-  isProcessing.value = true
-  files.value.forEach(f => f.status = 'processing')
+  if (!fileStore.hasFiles) return
+
+  // T-040: 格式兼容提示
+  const sameFormatFiles = fileStore.files.filter(f => f.type.toLowerCase() === targetFormat.value.toLowerCase())
+  if (sameFormatFiles.length > 0) {
+    await new Promise<void>((resolve, reject) => {
+      dialog.warning({
+        title: '格式相同',
+        content: `${sameFormatFiles.length} 个文件的源格式与目标格式相同（${targetFormat.value.toUpperCase()}），是否继续？`,
+        positiveText: '继续转换',
+        negativeText: '取消',
+        onPositiveClick: () => resolve(),
+        onNegativeClick: () => reject(new Error('cancelled')),
+      })
+    }).catch(() => { return })
+  }
+
+  fileStore.setProcessing(true)
+
+  fileStore.files.forEach((_f, i) => {
+    fileStore.updateFileStatus(i, { status: 'processing', progress: 0 })
+  })
 
   const handler = (_event: any, result: any) => {
-    const file = files.value[result.index]
-    if (!file) return
-    if (result.status === 'success') {
-      file.status = 'done'
-      file.newName = result.fileName
-      file.convertedSize = result.convertedSize
-    } else {
-      file.status = 'error'
-      file.error = result.error
-    }
+    fileStore.updateFileStatus(result.index, {
+      status: result.status === 'success' ? 'success' : 'error',
+      progress: 100,
+      result: result.status === 'success' ? {
+        outputPath: result.outputPath,
+        outputSize: result.convertedSize,
+        savedPercent: 0,
+      } : undefined,
+      error: result.error,
+    })
   }
   window.ipcRenderer.on('convert:progress', handler)
 
   try {
+    const outputDir = settingsStore.outputDir || undefined
     const results = await window.ipcRenderer.invoke('convert:start', {
-      files: files.value.map(f => f.path),
+      files: fileStore.files.map(f => f.path),
       targetFormat: targetFormat.value,
       size: presetSize.value ? parseInt(presetSize.value) : undefined,
+      customWidth: customWidth.value || undefined,
+      customHeight: customHeight.value || undefined,
+      lockRatio: lockRatio.value,
+      outputDir,
+      keepOriginal: settingsStore.keepOriginalFile,
     })
+
+    // 记录输出目录
+    if (results?.length > 0 && results[0].outputPath) {
+      const p = results[0].outputPath
+      lastOutputDir.value = p.substring(0, p.lastIndexOf('\\')) || p.substring(0, p.lastIndexOf('/'))
+    }
 
     const successCount = results.filter((r: any) => r.status === 'success').length
     const errorCount = results.filter((r: any) => r.status === 'error').length
@@ -131,7 +218,13 @@ async function startConvert() {
     message.error('转换失败: ' + e.message)
   } finally {
     window.ipcRenderer.off('convert:progress', handler)
-    isProcessing.value = false
+    fileStore.setProcessing(false)
+  }
+}
+
+async function openOutputDir() {
+  if (lastOutputDir.value) {
+    await window.ipcRenderer.invoke('system:openPath', lastOutputDir.value)
   }
 }
 </script>
@@ -139,84 +232,145 @@ async function startConvert() {
 <template>
   <div style="height: 100%; display: flex; flex-direction: column; overflow: hidden">
     <!-- 工具栏 -->
-    <div style="padding: 16px 24px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid rgba(255,255,255,0.06); flex-shrink: 0">
-      <NButton @click="selectFiles" type="primary" size="small">
-        <template #icon><NIcon><FolderOpenOutline /></NIcon></template>
-        选择图片
-      </NButton>
+    <Toolbar
+      :file-count="fileStore.fileCount"
+      :is-processing="fileStore.isProcessing"
+      @clear="handleClear"
+    >
+      <template #left>
+        <NButton @click="selectFiles" type="primary" size="small">
+          <template #icon><NIcon><FolderOpenOutline /></NIcon></template>
+          选择图片
+        </NButton>
+        <NButton @click="selectFolder" size="small">
+          <template #icon><NIcon><FolderOutline /></NIcon></template>
+          选择文件夹
+        </NButton>
 
-      <span style="color: rgba(255,255,255,0.5); font-size: 0.85em">目标格式</span>
-      <NSelect v-model:value="targetFormat" :options="formatOptions" size="small" style="width: 120px" />
-      <NSelect v-model:value="presetSize" :options="sizeOptions" size="small" style="width: 150px" placeholder="尺寸预设" />
+        <span style="color: var(--text-secondary); font-size: 0.85em">目标格式</span>
+        <NSelect v-model:value="targetFormat" :options="formatOptions" size="small" style="width: 120px" />
+        <NSelect v-model:value="presetSize" :options="sizeOptions" size="small" style="width: 150px" placeholder="尺寸预设" />
 
-      <div style="flex: 1" />
+        <!-- 自定义宽高 T-039 -->
+        <NTooltip>
+          <template #trigger>
+            <NInputNumber
+              :value="customWidth"
+              @update:value="handleWidthChange"
+              size="small"
+              placeholder="宽"
+              style="width: 80px"
+              :min="1"
+              :max="4096"
+            />
+          </template>
+          自定义宽度 (px)
+        </NTooltip>
+        <NButton size="tiny" quaternary @click="lockRatio = !lockRatio">
+          <template #icon>
+            <NIcon>
+              <LockClosedOutline v-if="lockRatio" />
+              <LockOpenOutline v-else />
+            </NIcon>
+          </template>
+        </NButton>
+        <NTooltip>
+          <template #trigger>
+            <NInputNumber
+              :value="customHeight"
+              @update:value="handleHeightChange"
+              size="small"
+              placeholder="高"
+              style="width: 80px"
+              :min="1"
+              :max="4096"
+            />
+          </template>
+          自定义高度 (px)
+        </NTooltip>
 
-      <NButton size="small" type="primary" @click="startConvert" :disabled="!isLoaded || isProcessing" :loading="isProcessing">
-        🔄 开始转换
-      </NButton>
-    </div>
+        <span style="color: var(--text-secondary); font-size: 0.8em; margin-left: 8px">保留原文件</span>
+        <NSwitch
+          :value="settingsStore.keepOriginalFile"
+          @update:value="settingsStore.setKeepOriginalFile"
+          size="small"
+        />
+
+        <OutputDirPicker />
+      </template>
+
+      <template #right>
+        <NButton
+          v-if="lastOutputDir"
+          size="small"
+          @click="openOutputDir"
+        >
+          <template #icon><NIcon><FolderOutline /></NIcon></template>
+          打开输出目录
+        </NButton>
+
+        <NButton
+          size="small"
+          type="primary"
+          @click="startConvert"
+          :disabled="!fileStore.hasFiles || fileStore.isProcessing"
+          :loading="fileStore.isProcessing"
+        >
+          🔄 开始转换
+        </NButton>
+      </template>
+    </Toolbar>
 
     <!-- 内容区 -->
-    <div style="flex: 1; padding: 24px; overflow-y: auto">
-      <!-- 空状态 -->
-      <div v-if="!isLoaded" style="display: flex; align-items: center; justify-content: center; height: 100%">
-        <div
-          @click="selectFiles"
-          style="border: 2px dashed rgba(102,126,234,0.3); border-radius: 16px; padding: 64px 48px; text-align: center; cursor: pointer; transition: all 0.3s"
-          @mouseenter="($event.target as HTMLElement).style.borderColor = '#667eea'"
-          @mouseleave="($event.target as HTMLElement).style.borderColor = 'rgba(102,126,234,0.3)'"
-        >
-          <div style="font-size: 3em; margin-bottom: 16px">🔄</div>
-          <p style="color: rgba(255,255,255,0.5); font-size: 1.1em">点击选择图片文件</p>
-          <p style="color: rgba(255,255,255,0.3); font-size: 0.85em; margin-top: 8px">支持所有主流图片格式互转 · 批量处理</p>
-        </div>
-      </div>
-
+    <div style="flex: 1; overflow-y: auto; display: flex; flex-direction: column">
       <!-- 格式卡片 -->
-      <div v-if="isLoaded" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin-bottom: 16px">
+      <div v-if="fileStore.hasFiles" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; padding: 16px 16px 8px">
         <div
           v-for="card in formatCards"
           :key="card.key"
           @click="targetFormat = card.key"
-          :style="{
-            padding: '14px',
-            borderRadius: '10px',
-            cursor: 'pointer',
-            border: targetFormat === card.key ? '1px solid #667eea' : '1px solid rgba(255,255,255,0.06)',
-            background: targetFormat === card.key ? 'rgba(102,126,234,0.08)' : 'rgba(255,255,255,0.03)',
-            transition: 'all 0.2s',
-          }"
+          class="format-card"
+          :class="{ active: targetFormat === card.key }"
         >
-          <div style="color: #ddd; font-size: 0.9em; font-weight: 600">{{ card.icon }} {{ card.title }}</div>
-          <div style="color: rgba(255,255,255,0.4); font-size: 0.75em; margin-top: 4px">{{ card.desc }}</div>
+          <div style="color: var(--text-primary); font-size: 0.9em; font-weight: 600">{{ card.icon }} {{ card.title }}</div>
+          <div style="color: var(--text-muted); font-size: 0.75em; margin-top: 4px">{{ card.desc }}</div>
         </div>
       </div>
 
       <!-- 文件列表 -->
-      <div v-if="isLoaded">
-        <div
-          v-for="file in files"
-          :key="file.path"
-          style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: rgba(255,255,255,0.03); border-radius: 8px; margin-bottom: 8px"
-        >
-          <div style="width: 40px; height: 40px; border-radius: 6px; background: rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center; font-size: 1.2em; flex-shrink: 0">📄</div>
-          <div style="flex: 1; min-width: 0">
-            <div style="color: #ddd; font-size: 0.85em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">
-              {{ file.status === 'done' && file.newName ? file.newName : file.name }}
-            </div>
-            <div style="color: rgba(255,255,255,0.35); font-size: 0.75em">
-              {{ formatSize(file.size) }}
-              <span v-if="file.convertedSize"> → {{ formatSize(file.convertedSize) }}</span>
-            </div>
-          </div>
-          <div>
-            <NTag v-if="file.status === 'pending'" size="small" type="info">待转换</NTag>
-            <NTag v-else-if="file.status === 'processing'" size="small" type="warning">转换中…</NTag>
-            <NTag v-else-if="file.status === 'done'" size="small" type="success">→ .{{ targetFormat }}</NTag>
-            <NTag v-else size="small" type="error" :title="file.error">失败</NTag>
-          </div>
-        </div>
-      </div>
+      <FileList
+        :files="fileStore.files"
+        :show-progress="true"
+        empty-icon="🔄"
+        empty-text="点击选择图片文件"
+        @remove="handleRemoveFile"
+        @click-empty="selectFiles"
+      >
+        <template #emptyHint>
+          <p style="color: var(--text-muted); font-size: 0.8em; margin-top: 8px">
+            支持所有主流图片格式互转 · 批量处理
+          </p>
+        </template>
+      </FileList>
     </div>
   </div>
 </template>
+
+<style scoped>
+.format-card {
+  padding: 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  border: 1px solid var(--border-light);
+  background: var(--bg-card);
+  transition: all 0.2s;
+}
+.format-card:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--accent);
+}
+.format-card.active {
+  border-color: var(--accent);
+  background: var(--accent-light);
+}
+</style>
