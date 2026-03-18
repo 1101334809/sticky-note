@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@vicons/ionicons5": "^0.13.0",
+    "koffi": "^2.15.2",
     "naive-ui": "^2.44.1",
     "pinia": "^3.0.4",
     "sharp": "^0.34.5",

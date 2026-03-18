@@ -1,9 +1,14 @@
-import { ipcMain, shell, app, dialog, nativeTheme, BrowserWindow, Menu } from "electron";
+var __defProp = Object.defineProperty;
+var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
+import { ipcMain, shell, app, globalShortcut, BrowserWindow, dialog, nativeTheme, Menu } from "electron";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import fs from "node:fs";
 import sharp from "sharp";
+import { EventEmitter } from "node:events";
+import koffi from "koffi";
 function registerSvgHandlers() {
   ipcMain.handle("svg:readFolder", async (_event, folderPath) => {
     const files = fs.readdirSync(folderPath);
@@ -303,6 +308,290 @@ function registerConfigHandlers() {
     return readConfig();
   });
 }
+const INPUT_MOUSE = 0;
+const MOUSEEVENTF_LEFTDOWN = 2;
+const MOUSEEVENTF_LEFTUP = 4;
+const MOUSEEVENTF_RIGHTDOWN = 8;
+const MOUSEEVENTF_RIGHTUP = 16;
+const MOUSEEVENTF_MIDDLEDOWN = 32;
+const MOUSEEVENTF_MIDDLEUP = 64;
+const MOUSEEVENTF_ABSOLUTE = 32768;
+koffi.struct("POINT", {
+  x: "long",
+  y: "long"
+});
+const MOUSEINPUT = koffi.struct("MOUSEINPUT", {
+  dx: "long",
+  dy: "long",
+  mouseData: "uint32",
+  dwFlags: "uint32",
+  time: "uint32",
+  dwExtraInfo: "uintptr"
+});
+const INPUT = koffi.struct("INPUT", {
+  type: "uint32",
+  mi: MOUSEINPUT
+});
+const user32 = koffi.load("user32.dll");
+const SendInput = user32.func("uint32 SendInput(uint32 cInputs, INPUT *pInputs, int32 cbSize)");
+const GetCursorPos = user32.func("bool GetCursorPos(_Out_ POINT *lpPoint)");
+const GetSystemMetrics = user32.func("int32 GetSystemMetrics(int32 nIndex)");
+let _screenW = 0;
+let _screenH = 0;
+function getScreenSize() {
+  if (_screenW === 0) {
+    _screenW = GetSystemMetrics(0);
+    _screenH = GetSystemMetrics(1);
+    console.log(`[win32] 屏幕分辨率: ${_screenW}x${_screenH}`);
+  }
+  return { w: _screenW, h: _screenH };
+}
+function getCursorPosition() {
+  const pt = { x: 0, y: 0 };
+  GetCursorPos(pt);
+  return { x: pt.x, y: pt.y };
+}
+function toAbsoluteCoord(x, y) {
+  const { w, h } = getScreenSize();
+  return {
+    ax: Math.round(x * 65535 / (w - 1)),
+    ay: Math.round(y * 65535 / (h - 1))
+  };
+}
+function mouseClick(x, y, button = "left") {
+  const { ax, ay } = toAbsoluteCoord(x, y);
+  let downFlag;
+  let upFlag;
+  switch (button) {
+    case "right":
+      downFlag = MOUSEEVENTF_RIGHTDOWN;
+      upFlag = MOUSEEVENTF_RIGHTUP;
+      break;
+    case "middle":
+      downFlag = MOUSEEVENTF_MIDDLEDOWN;
+      upFlag = MOUSEEVENTF_MIDDLEUP;
+      break;
+    default:
+      downFlag = MOUSEEVENTF_LEFTDOWN;
+      upFlag = MOUSEEVENTF_LEFTUP;
+  }
+  const inputSize = koffi.sizeof(INPUT);
+  const downInput = {
+    type: INPUT_MOUSE,
+    mi: { dx: ax, dy: ay, mouseData: 0, dwFlags: MOUSEEVENTF_ABSOLUTE | downFlag, time: 0, dwExtraInfo: 0 }
+  };
+  const resultDown = SendInput(1, [downInput], inputSize);
+  const upInput = {
+    type: INPUT_MOUSE,
+    mi: { dx: ax, dy: ay, mouseData: 0, dwFlags: MOUSEEVENTF_ABSOLUTE | upFlag, time: 0, dwExtraInfo: 0 }
+  };
+  const resultUp = SendInput(1, [upInput], inputSize);
+  if (resultDown === 0 || resultUp === 0) {
+    console.warn(`[win32] SendInput 返回 0，可能被 UIPI 阻止。pos=(${x},${y}) button=${button}`);
+  }
+}
+function mouseDoubleClick(x, y, button = "left") {
+  mouseClick(x, y, button);
+  mouseClick(x, y, button);
+}
+class ClickerEngine extends EventEmitter {
+  constructor() {
+    super(...arguments);
+    __publicField(this, "state", "idle");
+    __publicField(this, "config", null);
+    __publicField(this, "clickCount", 0);
+    __publicField(this, "timer", null);
+    __publicField(this, "countdownTimer", null);
+    __publicField(this, "multiIndex", 0);
+  }
+  // 多点轮询当前索引
+  /** 当前状态 */
+  getState() {
+    return this.state;
+  }
+  /** 当前点击次数 */
+  getClickCount() {
+    return this.clickCount;
+  }
+  /** 启动连点 */
+  start(config) {
+    if (this.state !== "idle") {
+      return;
+    }
+    this.config = { ...config };
+    this.clickCount = 0;
+    this.multiIndex = 0;
+    if (config.startDelay > 0) {
+      this.setState("countdown");
+      this.countdownTimer = setTimeout(() => {
+        this.countdownTimer = null;
+        this.beginClicking();
+      }, config.startDelay * 1e3);
+    } else {
+      this.beginClicking();
+    }
+  }
+  /** 停止连点 */
+  stop() {
+    if (this.state === "idle") return;
+    this.clearTimers();
+    this.setState("idle");
+    this.emit("stopped", { clickCount: this.clickCount });
+  }
+  /** 内部：开始点击循环 */
+  beginClicking() {
+    if (!this.config) return;
+    this.setState("running");
+    this.tick();
+    this.timer = setInterval(() => {
+      this.tick();
+    }, this.config.interval);
+  }
+  /** 内部：每次点击执行 */
+  tick() {
+    if (!this.config || this.state !== "running") return;
+    const pos = this.getNextPosition();
+    const { button, clickType } = this.config;
+    try {
+      if (clickType === "double") {
+        mouseDoubleClick(pos.x, pos.y, button);
+      } else {
+        mouseClick(pos.x, pos.y, button);
+      }
+    } catch (e) {
+      console.error("[ClickerEngine] 点击执行失败:", e);
+    }
+    this.clickCount++;
+    this.emit("click", { count: this.clickCount, position: pos });
+    if (this.config.maxClicks > 0 && this.clickCount >= this.config.maxClicks) {
+      this.clearTimers();
+      this.setState("idle");
+      this.emit("completed", { clickCount: this.clickCount });
+    }
+  }
+  /** 内部：获取下一个点击位置 */
+  getNextPosition() {
+    if (!this.config) return { x: 0, y: 0 };
+    switch (this.config.positionMode) {
+      case "fixed":
+        return this.config.fixedPosition;
+      case "multi": {
+        const positions = this.config.multiPositions;
+        if (positions.length === 0) return getCursorPosition();
+        const pos = positions[this.multiIndex % positions.length];
+        this.multiIndex++;
+        return pos;
+      }
+      case "follow":
+      default:
+        return getCursorPosition();
+    }
+  }
+  /** 内部：设置状态并通知 */
+  setState(newState) {
+    this.state = newState;
+    this.emit("state-change", {
+      state: newState,
+      clickCount: this.clickCount
+    });
+  }
+  /** 内部：清理所有定时器 */
+  clearTimers() {
+    if (this.timer) {
+      clearInterval(this.timer);
+      this.timer = null;
+    }
+    if (this.countdownTimer) {
+      clearTimeout(this.countdownTimer);
+      this.countdownTimer = null;
+    }
+  }
+  /** 销毁引擎 */
+  destroy() {
+    this.stop();
+    this.removeAllListeners();
+  }
+}
+let clicker = null;
+function getMainWindow() {
+  const windows = BrowserWindow.getAllWindows();
+  return windows.length > 0 ? windows[0] : null;
+}
+function pushState(channel, data) {
+  const win2 = getMainWindow();
+  if (win2 && !win2.isDestroyed()) {
+    win2.webContents.send(channel, data);
+  }
+}
+function registerClickerHandlers() {
+  clicker = new ClickerEngine();
+  clicker.on("state-change", (data) => {
+    pushState("clicker:state", data);
+  });
+  clicker.on("click", (data) => {
+    pushState("clicker:click", data);
+  });
+  clicker.on("completed", (data) => {
+    pushState("clicker:completed", data);
+  });
+  clicker.on("stopped", (data) => {
+    pushState("clicker:stopped", data);
+  });
+  ipcMain.handle("clicker:start", async (_event, config) => {
+    console.log("[clicker-handler] 收到启动请求, config:", config);
+    if (!clicker) return { success: false, error: "引擎未初始化" };
+    if (clicker.getState() !== "idle") {
+      return { success: false, error: "连点器正在运行" };
+    }
+    try {
+      clicker.start(config);
+      console.log("[clicker-handler] 引擎已启动");
+      return { success: true };
+    } catch (e) {
+      console.error("[clicker-handler] 启动失败:", e);
+      return { success: false, error: e.message };
+    }
+  });
+  ipcMain.handle("clicker:stop", async () => {
+    if (!clicker) return { success: false };
+    clicker.stop();
+    return { success: true };
+  });
+  ipcMain.handle("clicker:getStatus", async () => {
+    if (!clicker) return { state: "idle", clickCount: 0 };
+    return {
+      state: clicker.getState(),
+      clickCount: clicker.getClickCount()
+    };
+  });
+}
+function registerClickerHotkeys() {
+  globalShortcut.register("F6", () => {
+    if (!clicker) return;
+    if (clicker.getState() === "idle") {
+      pushState("clicker:hotkeyToggle", { action: "start" });
+    } else {
+      clicker.stop();
+    }
+  });
+  globalShortcut.register("Escape", () => {
+    if (!clicker) return;
+    if (clicker.getState() !== "idle") {
+      clicker.stop();
+    }
+  });
+}
+function cleanupClickerHandlers() {
+  if (clicker) {
+    clicker.destroy();
+    clicker = null;
+  }
+  try {
+    globalShortcut.unregister("F6");
+    globalShortcut.unregister("Escape");
+  } catch {
+  }
+}
 const require$1 = createRequire(import.meta.url);
 const __dirname$1 = path.dirname(fileURLToPath(import.meta.url));
 process.env.APP_ROOT = path.join(__dirname$1, "..");
@@ -380,8 +669,10 @@ registerCompressHandlers();
 registerConvertHandlers();
 registerSystemHandlers();
 registerConfigHandlers();
+registerClickerHandlers();
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
+    cleanupClickerHandlers();
     app.quit();
     win = null;
   }
@@ -393,8 +684,9 @@ app.on("activate", () => {
 });
 app.whenReady().then(() => {
   createWindow();
-  const { globalShortcut } = require$1("electron");
-  globalShortcut.register("CmdOrCtrl+O", () => {
+  registerClickerHotkeys();
+  const { globalShortcut: globalShortcut2 } = require$1("electron");
+  globalShortcut2.register("CmdOrCtrl+O", () => {
     if (!win) return;
     dialog.showOpenDialog(win, {
       properties: ["openFile", "multiSelections"]
@@ -404,7 +696,7 @@ app.whenReady().then(() => {
       }
     });
   });
-  globalShortcut.register("CmdOrCtrl+Shift+O", () => {
+  globalShortcut2.register("CmdOrCtrl+Shift+O", () => {
     if (!win) return;
     dialog.showOpenDialog(win, {
       properties: ["openDirectory"]

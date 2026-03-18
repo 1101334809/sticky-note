@@ -7,6 +7,7 @@ import { registerCompressHandlers } from './ipc/compress.handler'
 import { registerConvertHandlers } from './ipc/convert.handler'
 import { registerSystemHandlers } from './ipc/system.handler'
 import { registerConfigHandlers } from './core/config'
+import { registerClickerHandlers, registerClickerHotkeys, cleanupClickerHandlers } from './ipc/clicker.handler'
 
 const require = createRequire(import.meta.url)
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -110,10 +111,12 @@ registerCompressHandlers()
 registerConvertHandlers()
 registerSystemHandlers()
 registerConfigHandlers()
+registerClickerHandlers()
 
 // ====== App lifecycle ======
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
+    cleanupClickerHandlers()
     app.quit()
     win = null
   }
@@ -127,6 +130,7 @@ app.on('activate', () => {
 
 app.whenReady().then(() => {
   createWindow()
+  registerClickerHotkeys()
 
   // ====== 快捷键 T-040 ======
   const { globalShortcut } = require('electron')

@@ -10,6 +10,7 @@ const router = createRouter({
     { path: '/svg', component: () => import('../views/SvgViewer.vue') },
     { path: '/compress', component: () => import('../views/ImageCompress.vue') },
     { path: '/convert', component: () => import('../views/FormatConvert.vue') },
+    { path: '/clicker', component: () => import('../views/ClickerView.vue') },
   ],
 })
 

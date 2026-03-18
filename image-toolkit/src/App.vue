@@ -19,6 +19,7 @@ import {
   SwapHorizontalOutline,
   SunnyOutline,
   MoonOutline,
+  HandLeftOutline,
 } from '@vicons/ionicons5'
 import { h } from 'vue'
 import { useTheme } from './composables/useTheme'
@@ -134,6 +135,11 @@ const menuOptions: MenuOption[] = [
     key: '/convert',
     icon: () => h(NIcon, null, { default: () => h(SwapHorizontalOutline) }),
   },
+  {
+    label: '连点器',
+    key: '/clicker',
+    icon: () => h(NIcon, null, { default: () => h(HandLeftOutline) }),
+  },
 ]
 
 const activeKey = computed(() => route.path)
@@ -190,7 +196,7 @@ function handleMenuUpdate(key: string) {
         </NLayoutSider>
 
         <!-- 主内容区 -->
-        <NLayout content-style="height: 100vh; overflow: hidden; position: relative;">
+        <NLayout content-style="height: 100vh; overflow-y: auto; position: relative;">
           <!-- 拖拽遮罩 -->
           <Transition name="fade">
             <div
