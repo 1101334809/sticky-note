@@ -6,12 +6,9 @@
 import { readFile, writeFile } from 'node:fs/promises'
 import { stat } from 'node:fs/promises'
 import path from 'node:path'
-import { createRequire } from 'node:module'
+import mammoth from 'mammoth'
 import type { IConverter, ConvertInput, ConvertOutput } from './IConverter'
 import type { ConvertDirection } from '../types'
-
-const require = createRequire(import.meta.url)
-const mammoth = require('mammoth')
 
 export class WordToHtmlConverter implements IConverter {
   readonly direction: ConvertDirection = 'docx-to-html'

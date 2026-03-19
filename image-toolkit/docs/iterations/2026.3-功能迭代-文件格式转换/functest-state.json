@@ -1,0 +1,68 @@
+{
+  "feature": "文件格式转换",
+  "test_case_file": "docs/iterations/2026.3-功能迭代-文件格式转换/测试用例.md",
+  "environment": "dev",
+  "base_url": "http://localhost:5173",
+  "started_at": "2026-03-19T15:31:00+08:00",
+  "last_update": "2026-03-19T16:03:00+08:00",
+  "stats": {
+    "total": 3,
+    "passed": 2,
+    "failed": 0,
+    "blocked": 1,
+    "pending": 17
+  },
+  "current_case": null,
+  "pending_cases": [
+    "TC-004", "TC-005", "TC-006", "TC-007", "TC-008",
+    "TC-009", "TC-010", "TC-011", "TC-012", "TC-013",
+    "TC-014", "TC-015", "TC-016", "TC-017", "TC-018",
+    "TC-019", "TC-020"
+  ],
+  "completed_cases": [
+    {
+      "id": "TC-001",
+      "name": "侧栏入口与页面导航",
+      "status": "PASS",
+      "duration": 5.2,
+      "steps": [
+        {"step": 1, "action": "启动应用", "expected": "侧栏显示「文档转换」菜单项", "actual": "侧栏显示「文档转换」", "status": "PASS", "screenshot": "click_feedback_1773907166316.png"},
+        {"step": 2, "action": "点击「文档转换」", "expected": "页面跳转到 /doc-convert", "actual": "URL 变为 /#/doc-convert", "status": "PASS", "screenshot": "click_feedback_1773907166316.png"},
+        {"step": 3, "action": "确认页面标题", "expected": "显示「文档转换」标题", "actual": "标题「文档转换」+ 副标题「支持 Word / PPT / PDF / Markdown / HTML 格式互转」", "status": "PASS"},
+        {"step": 4, "action": "确认格式选择器", "expected": "显示源格式和目标格式两个下拉框", "actual": "两个下拉框正确显示", "status": "PASS"},
+        {"step": 5, "action": "确认默认格式", "expected": "源格式 Word，目标 Markdown", "actual": "Word (.docx) → Markdown (.md)", "status": "PASS"}
+      ],
+      "timestamp": "2026-03-19T15:52:00+08:00"
+    },
+    {
+      "id": "TC-002",
+      "name": "格式选择器联动",
+      "status": "PASS",
+      "duration": 12.5,
+      "steps": [
+        {"step": 1, "action": "源格式选择 Word", "expected": "目标显示 PDF/Markdown/HTML", "actual": "目标显示 PDF/Markdown/HTML", "status": "PASS"},
+        {"step": 2, "action": "源格式切换为 PPT", "expected": "目标显示 Word/PDF/Image", "actual": "目标显示 Word/PDF/Image", "status": "PASS", "screenshot": "click_feedback_1773907258686.png"},
+        {"step": 3, "action": "源格式切换为 PDF", "expected": "目标显示 Word/Markdown", "actual": "目标显示 Word/Markdown", "status": "PASS", "screenshot": "click_feedback_1773907272420.png"},
+        {"step": 4, "action": "源格式切换为 Markdown", "expected": "目标显示 HTML/Word", "actual": "目标显示 HTML/Word", "status": "PASS", "screenshot": "click_feedback_1773907285340.png"},
+        {"step": 5, "action": "源格式切换为 HTML", "expected": "目标显示 Markdown", "actual": "目标显示 Markdown", "status": "PASS", "screenshot": "click_feedback_1773907308694.png"}
+      ],
+      "timestamp": "2026-03-19T15:55:00+08:00"
+    },
+    {
+      "id": "TC-003",
+      "name": "文件添加（拖拽 + 点击）",
+      "status": "BLOCKED",
+      "duration": 0,
+      "steps": [],
+      "blocked_reason": "浏览器沙箱无法模拟文件拖拽和 Electron dialog.showOpenDialog",
+      "timestamp": "2026-03-19T15:58:00+08:00"
+    }
+  ],
+  "checkpoints": [
+    {
+      "id": "checkpoint-001",
+      "timestamp": "2026-03-19T16:00:00+08:00",
+      "completed_count": 3
+    }
+  ]
+}

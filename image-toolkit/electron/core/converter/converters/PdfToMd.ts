@@ -10,9 +10,6 @@ import { createRequire } from 'node:module'
 import type { IConverter, ConvertInput, ConvertOutput } from './IConverter'
 import type { ConvertDirection } from '../types'
 
-const require = createRequire(import.meta.url)
-const pdfParse = require('pdf-parse')
-
 export class PdfToMdConverter implements IConverter {
   readonly direction: ConvertDirection = 'pdf-to-md'
   readonly requiresLibreOffice = false
@@ -26,6 +23,8 @@ export class PdfToMdConverter implements IConverter {
 
     let pdfData: any
     try {
+      const _require = createRequire(import.meta.url)
+      const pdfParse = _require('pdf-parse')
       pdfData = await pdfParse(buffer)
     } catch (e: any) {
       throw new Error(`PDF 解析失败: ${e.message}`)

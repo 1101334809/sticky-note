@@ -6,12 +6,9 @@
 import { readFile, writeFile } from 'node:fs/promises'
 import { stat } from 'node:fs/promises'
 import path from 'node:path'
-import { createRequire } from 'node:module'
+import { marked } from 'marked'
 import type { IConverter, ConvertInput, ConvertOutput } from './IConverter'
 import type { ConvertDirection } from '../types'
-
-const require = createRequire(import.meta.url)
-const { marked } = require('marked')
 
 export class MdToHtmlConverter implements IConverter {
   readonly direction: ConvertDirection = 'md-to-html'

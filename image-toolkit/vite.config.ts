@@ -13,7 +13,7 @@ export default defineConfig({
         vite: {
           build: {
             rollupOptions: {
-              external: ['sharp', 'koffi'],
+              external: ['sharp', 'koffi', 'pdf-parse'],
             },
           },
         },

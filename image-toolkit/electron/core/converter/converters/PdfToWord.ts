@@ -12,9 +12,6 @@ import { Document, Packer, Paragraph, HeadingLevel, TextRun } from 'docx'
 import type { IConverter, ConvertInput, ConvertOutput } from './IConverter'
 import type { ConvertDirection } from '../types'
 
-const require = createRequire(import.meta.url)
-const pdfParse = require('pdf-parse')
-
 export class PdfToWordConverter implements IConverter {
   readonly direction: ConvertDirection = 'pdf-to-docx'
   readonly requiresLibreOffice = false
@@ -29,6 +26,8 @@ export class PdfToWordConverter implements IConverter {
 
     let pdfData: any
     try {
+      const _require = createRequire(import.meta.url)
+      const pdfParse = _require('pdf-parse')
       pdfData = await pdfParse(buffer)
     } catch (e: any) {
       throw new Error(`PDF 解析失败: ${e.message}`)

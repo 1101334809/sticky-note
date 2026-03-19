@@ -6,13 +6,10 @@
 import { readFile, writeFile } from 'node:fs/promises'
 import { stat } from 'node:fs/promises'
 import path from 'node:path'
-import { createRequire } from 'node:module'
+import { marked } from 'marked'
+import htmlDocx from 'html-docx-js-typescript'
 import type { IConverter, ConvertInput, ConvertOutput } from './IConverter'
 import type { ConvertDirection } from '../types'
-
-const require = createRequire(import.meta.url)
-const { marked } = require('marked')
-const htmlDocx = require('html-docx-js-typescript')
 
 export class MdToWordConverter implements IConverter {
   readonly direction: ConvertDirection = 'md-to-docx'

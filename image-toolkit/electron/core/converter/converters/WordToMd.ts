@@ -7,13 +7,10 @@
 import { readFile, writeFile, mkdir } from 'node:fs/promises'
 import { stat } from 'node:fs/promises'
 import path from 'node:path'
-import { createRequire } from 'node:module'
+import mammoth from 'mammoth'
+import TurndownService from 'turndown'
 import type { IConverter, ConvertInput, ConvertOutput } from './IConverter'
 import type { ConvertDirection } from '../types'
-
-const require = createRequire(import.meta.url)
-const mammoth = require('mammoth')
-const TurndownService = require('turndown')
 
 export class WordToMdConverter implements IConverter {
   readonly direction: ConvertDirection = 'docx-to-md'
