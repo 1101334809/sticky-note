@@ -20,6 +20,7 @@ import {
   SunnyOutline,
   MoonOutline,
   HandLeftOutline,
+  DocumentTextOutline,
 } from '@vicons/ionicons5'
 import { h } from 'vue'
 import { useTheme } from './composables/useTheme'
@@ -139,6 +140,11 @@ const menuOptions: MenuOption[] = [
     label: '连点器',
     key: '/clicker',
     icon: () => h(NIcon, null, { default: () => h(HandLeftOutline) }),
+  },
+  {
+    label: '文档转换',
+    key: '/doc-convert',
+    icon: () => h(NIcon, null, { default: () => h(DocumentTextOutline) }),
   },
 ]
 

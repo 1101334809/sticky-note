@@ -8,6 +8,7 @@ import { registerConvertHandlers } from './ipc/convert.handler'
 import { registerSystemHandlers } from './ipc/system.handler'
 import { registerConfigHandlers } from './core/config'
 import { registerClickerHandlers, registerClickerHotkeys, cleanupClickerHandlers } from './ipc/clicker.handler'
+import { registerDocConvertHandlers, cleanupDocConvertHandlers } from './ipc/docConvert.handler'
 
 const require = createRequire(import.meta.url)
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -112,11 +113,13 @@ registerConvertHandlers()
 registerSystemHandlers()
 registerConfigHandlers()
 registerClickerHandlers()
+registerDocConvertHandlers()
 
 // ====== App lifecycle ======
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     cleanupClickerHandlers()
+    cleanupDocConvertHandlers()
     app.quit()
     win = null
   }
