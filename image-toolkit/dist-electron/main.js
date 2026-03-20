@@ -1,25 +1,49 @@
+"use strict";
+var __create = Object.create;
 var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getProtoOf = Object.getPrototypeOf;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
+  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+  mod
+));
 var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
 var _a;
-import { ipcMain, shell, app, globalShortcut, BrowserWindow, dialog, nativeTheme, Menu } from "electron";
-import { createRequire } from "node:module";
-import { fileURLToPath } from "node:url";
-import path from "node:path";
-import fs$2, { constants as constants$2 } from "node:fs";
-import sharp from "sharp";
-import { EventEmitter } from "node:events";
-import koffi from "koffi";
-import { stat, access, readFile as readFile$2, mkdir, writeFile } from "node:fs/promises";
-import { execFile } from "node:child_process";
-import require$$0$2 from "stream";
-import require$$2 from "events";
-import require$$0$3 from "buffer";
-import require$$1 from "util";
-import require$$0$4 from "fs";
-import require$$1$1 from "url";
-import require$$2$1 from "os";
-import require$$3 from "path";
+Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
+const electron = require("electron");
+const node_module = require("node:module");
+const node_url = require("node:url");
+const path = require("node:path");
+const fs$2 = require("node:fs");
+const sharp = require("sharp");
+const node_events = require("node:events");
+const koffi = require("koffi");
+const promises$8 = require("node:fs/promises");
+const node_child_process = require("node:child_process");
+const require$$0$2 = require("stream");
+const require$$2 = require("events");
+const require$$0$3 = require("buffer");
+const require$$1 = require("util");
+const require$$0$4 = require("fs");
+const require$$1$1 = require("url");
+const require$$2$1 = require("os");
+const require$$3 = require("path");
+var _documentCurrentScript = typeof document !== "undefined" ? document.currentScript : null;
 function _mergeNamespaces(n, m2) {
   for (var i = 0; i < m2.length; i++) {
     const e = m2[i];
@@ -40,7 +64,7 @@ function _mergeNamespaces(n, m2) {
   return Object.freeze(Object.defineProperty(n, Symbol.toStringTag, { value: "Module" }));
 }
 function registerSvgHandlers() {
-  ipcMain.handle("svg:readFolder", async (_event, folderPath) => {
+  electron.ipcMain.handle("svg:readFolder", async (_event, folderPath) => {
     const files2 = fs$2.readdirSync(folderPath);
     return files2.filter((f) => f.toLowerCase().endsWith(".svg")).map((f) => {
       const fullPath = path.join(folderPath, f);
@@ -49,14 +73,14 @@ function registerSvgHandlers() {
       return { name: f, path: fullPath, size: stats.size, content };
     });
   });
-  ipcMain.handle("svg:changeColor", async (_event, svgContent, color) => {
+  electron.ipcMain.handle("svg:changeColor", async (_event, svgContent, color) => {
     let result2 = svgContent.replace(/fill="(?!none)[^"]*"/g, `fill="${color}"`);
     result2 = result2.replace(/stroke="(?!none)[^"]*"/g, `stroke="${color}"`);
     result2 = result2.replace(/fill:\s*(?!none)[^;}"]+/g, `fill: ${color}`);
     result2 = result2.replace(/stroke:\s*(?!none)[^;}"]+/g, `stroke: ${color}`);
     return result2;
   });
-  ipcMain.handle("svg:saveFiles", async (_event, files2) => {
+  electron.ipcMain.handle("svg:saveFiles", async (_event, files2) => {
     let saved = 0;
     for (const file of files2) {
       try {
@@ -68,7 +92,7 @@ function registerSvgHandlers() {
     }
     return { saved, total: files2.length };
   });
-  ipcMain.handle("svg:exportPng", async (_event, options) => {
+  electron.ipcMain.handle("svg:exportPng", async (_event, options) => {
     try {
       const results2 = [];
       if (options.mode === "scale" && options.scales) {
@@ -95,7 +119,7 @@ function registerSvgHandlers() {
       return { success: false, error: e.message };
     }
   });
-  ipcMain.handle("svg:downloadZip", async (_event, options) => {
+  electron.ipcMain.handle("svg:downloadZip", async (_event, options) => {
     try {
       const outputPath = path.join(options.outputDir, options.zipName);
       const { execSync } = await import("node:child_process");
@@ -127,7 +151,7 @@ function registerSvgHandlers() {
   });
 }
 function registerCompressHandlers() {
-  ipcMain.handle("compress:start", async (event, options) => {
+  electron.ipcMain.handle("compress:start", async (event, options) => {
     const results2 = [];
     for (let i = 0; i < options.files.length; i++) {
       const filePath = options.files[i];
@@ -197,7 +221,7 @@ function registerCompressHandlers() {
     }
     return results2;
   });
-  ipcMain.handle("file:getInfo", async (_event, filePaths) => {
+  electron.ipcMain.handle("file:getInfo", async (_event, filePaths) => {
     return filePaths.map((p) => {
       try {
         const stats = fs$2.statSync(p);
@@ -218,7 +242,7 @@ function registerCompressHandlers() {
   });
 }
 function registerConvertHandlers() {
-  ipcMain.handle("convert:start", async (event, options) => {
+  electron.ipcMain.handle("convert:start", async (event, options) => {
     const results2 = [];
     for (let i = 0; i < options.files.length; i++) {
       const filePath = options.files[i];
@@ -288,24 +312,24 @@ function registerConvertHandlers() {
   });
 }
 function registerSystemHandlers() {
-  ipcMain.handle("system:openPath", async (_event, dirPath) => {
+  electron.ipcMain.handle("system:openPath", async (_event, dirPath) => {
     try {
-      await shell.openPath(dirPath);
+      await electron.shell.openPath(dirPath);
       return { success: true };
     } catch (e) {
       return { success: false, error: e.message };
     }
   });
-  ipcMain.handle("system:showItemInFolder", async (_event, filePath) => {
+  electron.ipcMain.handle("system:showItemInFolder", async (_event, filePath) => {
     try {
-      shell.showItemInFolder(filePath);
+      electron.shell.showItemInFolder(filePath);
       return { success: true };
     } catch (e) {
       return { success: false, error: e.message };
     }
   });
 }
-const CONFIG_FILE = path.join(app.getPath("userData"), "toolkit-config.json");
+const CONFIG_FILE = path.join(electron.app.getPath("userData"), "toolkit-config.json");
 function readConfig() {
   try {
     if (fs$2.existsSync(CONFIG_FILE)) {
@@ -324,17 +348,17 @@ function writeConfig(config) {
   }
 }
 function registerConfigHandlers() {
-  ipcMain.handle("config:get", async (_event, key) => {
+  electron.ipcMain.handle("config:get", async (_event, key) => {
     const config = readConfig();
     return config[key] ?? null;
   });
-  ipcMain.handle("config:set", async (_event, key, value) => {
+  electron.ipcMain.handle("config:set", async (_event, key, value) => {
     const config = readConfig();
     config[key] = value;
     writeConfig(config);
     return true;
   });
-  ipcMain.handle("config:getAll", async () => {
+  electron.ipcMain.handle("config:getAll", async () => {
     return readConfig();
   });
 }
@@ -424,7 +448,7 @@ function mouseDoubleClick(x2, y2, button = "left") {
   mouseClick(x2, y2, button);
   mouseClick(x2, y2, button);
 }
-class ClickerEngine extends EventEmitter {
+class ClickerEngine extends node_events.EventEmitter {
   constructor() {
     super(...arguments);
     __publicField(this, "state", "idle");
@@ -544,7 +568,7 @@ class ClickerEngine extends EventEmitter {
 }
 let clicker = null;
 function getMainWindow() {
-  const windows = BrowserWindow.getAllWindows();
+  const windows = electron.BrowserWindow.getAllWindows();
   return windows.length > 0 ? windows[0] : null;
 }
 function pushState(channel, data) {
@@ -567,7 +591,7 @@ function registerClickerHandlers() {
   clicker.on("stopped", (data) => {
     pushState("clicker:stopped", data);
   });
-  ipcMain.handle("clicker:start", async (_event, config) => {
+  electron.ipcMain.handle("clicker:start", async (_event, config) => {
     console.log("[clicker-handler] 收到启动请求, config:", config);
     if (!clicker) return { success: false, error: "引擎未初始化" };
     if (clicker.getState() !== "idle") {
@@ -582,12 +606,12 @@ function registerClickerHandlers() {
       return { success: false, error: e.message };
     }
   });
-  ipcMain.handle("clicker:stop", async () => {
+  electron.ipcMain.handle("clicker:stop", async () => {
     if (!clicker) return { success: false };
     clicker.stop();
     return { success: true };
   });
-  ipcMain.handle("clicker:getStatus", async () => {
+  electron.ipcMain.handle("clicker:getStatus", async () => {
     if (!clicker) return { state: "idle", clickCount: 0 };
     return {
       state: clicker.getState(),
@@ -596,7 +620,7 @@ function registerClickerHandlers() {
   });
 }
 function registerClickerHotkeys() {
-  globalShortcut.register("F6", () => {
+  electron.globalShortcut.register("F6", () => {
     if (!clicker) return;
     if (clicker.getState() === "idle") {
       pushState("clicker:hotkeyToggle", { action: "start" });
@@ -604,7 +628,7 @@ function registerClickerHotkeys() {
       clicker.stop();
     }
   });
-  globalShortcut.register("Escape", () => {
+  electron.globalShortcut.register("Escape", () => {
     if (!clicker) return;
     if (clicker.getState() !== "idle") {
       clicker.stop();
@@ -617,8 +641,8 @@ function cleanupClickerHandlers() {
     clicker = null;
   }
   try {
-    globalShortcut.unregister("F6");
-    globalShortcut.unregister("Escape");
+    electron.globalShortcut.unregister("F6");
+    electron.globalShortcut.unregister("Escape");
   } catch {
   }
 }
@@ -661,7 +685,7 @@ class ConvertEngine {
     return converter.convert(input);
   }
 }
-class ConvertQueue extends EventEmitter {
+class ConvertQueue extends node_events.EventEmitter {
   constructor(engine2) {
     super();
     __publicField(this, "queue", []);
@@ -703,7 +727,7 @@ class ConvertQueue extends EventEmitter {
       task.startTime = Date.now();
       this.emit("taskStart", { taskId: task.id, fileName: path.basename(task.inputPath) });
       try {
-        const stats = await stat(task.inputPath);
+        const stats = await promises$8.stat(task.inputPath);
         task.inputSize = stats.size;
         const output = await this.engine.convert(task.direction, {
           inputPath: task.inputPath,
@@ -792,7 +816,7 @@ async function detectLibreOffice() {
   }
   for (const p of DEFAULT_PATHS) {
     try {
-      await access(p, constants$2.X_OK);
+      await promises$8.access(p, fs$2.constants.X_OK);
       const version = await execPromise(p, ["--version"]);
       cachedInfo = { installed: true, path: p, version: version.trim() };
       console.log("[libreoffice] 从默认路径检测到:", p);
@@ -826,7 +850,7 @@ async function convertWithLibreOffice(inputPath, outputDir, format, timeout = 12
 function execPromise(cmd, args, timeout = 1e4) {
   return new Promise((resolve, reject2) => {
     var _a2;
-    const proc = execFile(cmd, args, { timeout }, (error2, stdout, stderr) => {
+    const proc = node_child_process.execFile(cmd, args, { timeout }, (error2, stdout, stderr) => {
       if (error2) {
         reject2(new Error(`LibreOffice 执行失败: ${error2.message}
 ${stderr}`));
@@ -6801,8 +6825,8 @@ function requireAny() {
   };
   return any;
 }
-(function(module) {
-  module.exports = function() {
+(function(module2) {
+  module2.exports = function() {
     var makeSelfResolutionError = function() {
       return new TypeError2("circular promise resolution chain\n\n    See http://goo.gl/MqrFmX\n");
     };
@@ -6958,7 +6982,7 @@ function requireAny() {
     Promise2.prototype.error = function(fn) {
       return this.caught(util2.originatesFromRejection, fn);
     };
-    Promise2.getNewLibraryCopy = module.exports;
+    Promise2.getNewLibraryCopy = module2.exports;
     Promise2.is = function(val) {
       return val instanceof Promise2;
     };
@@ -7971,7 +7995,7 @@ var hasRequiredSafeBuffer$1;
 function requireSafeBuffer$1() {
   if (hasRequiredSafeBuffer$1) return safeBuffer$1.exports;
   hasRequiredSafeBuffer$1 = 1;
-  (function(module, exports$1) {
+  (function(module2, exports$1) {
     var buffer2 = require$$0$3;
     var Buffer2 = buffer2.Buffer;
     function copyProps(src, dst) {
@@ -7980,7 +8004,7 @@ function requireSafeBuffer$1() {
       }
     }
     if (Buffer2.from && Buffer2.alloc && Buffer2.allocUnsafe && Buffer2.allocUnsafeSlow) {
-      module.exports = buffer2;
+      module2.exports = buffer2;
     } else {
       copyProps(buffer2, exports$1);
       exports$1.Buffer = SafeBuffer;
@@ -8149,7 +8173,7 @@ var hasRequiredBufferList;
 function requireBufferList() {
   if (hasRequiredBufferList) return BufferList.exports;
   hasRequiredBufferList = 1;
-  (function(module) {
+  (function(module2) {
     function _classCallCheck(instance, Constructor) {
       if (!(instance instanceof Constructor)) {
         throw new TypeError("Cannot call a class as a function");
@@ -8160,7 +8184,7 @@ function requireBufferList() {
     function copyBuffer(src, target, offset) {
       src.copy(target, offset);
     }
-    module.exports = function() {
+    module2.exports = function() {
       function BufferList2() {
         _classCallCheck(this, BufferList2);
         this.head = null;
@@ -8216,7 +8240,7 @@ function requireBufferList() {
       return BufferList2;
     }();
     if (util2 && util2.inspect && util2.inspect.custom) {
-      module.exports.prototype[util2.inspect.custom] = function() {
+      module2.exports.prototype[util2.inspect.custom] = function() {
         var obj = util2.inspect({ length: this.length });
         return this.constructor.name + " " + obj;
       };
@@ -9862,11 +9886,11 @@ var hasRequiredReadable;
 function requireReadable() {
   if (hasRequiredReadable) return readable.exports;
   hasRequiredReadable = 1;
-  (function(module, exports$1) {
+  (function(module2, exports$1) {
     var Stream = require$$0$2;
     if (process.env.READABLE_STREAM === "disable" && Stream) {
-      module.exports = Stream;
-      exports$1 = module.exports = Stream.Readable;
+      module2.exports = Stream;
+      exports$1 = module2.exports = Stream.Readable;
       exports$1.Readable = Stream.Readable;
       exports$1.Writable = Stream.Writable;
       exports$1.Duplex = Stream.Duplex;
@@ -9874,7 +9898,7 @@ function requireReadable() {
       exports$1.PassThrough = Stream.PassThrough;
       exports$1.Stream = Stream;
     } else {
-      exports$1 = module.exports = require_stream_readable$1();
+      exports$1 = module2.exports = require_stream_readable$1();
       exports$1.Stream = Stream || exports$1;
       exports$1.Readable = exports$1;
       exports$1.Writable = require_stream_writable$1();
@@ -30228,7 +30252,7 @@ class WordToMdConverter {
   async convert(input) {
     const { inputPath, outputDir, config, onProgress } = input;
     onProgress(10);
-    const buffer2 = await readFile$2(inputPath);
+    const buffer2 = await promises$8.readFile(inputPath);
     const baseName = path.basename(inputPath, path.extname(inputPath));
     const imagesDir = path.join(outputDir, `${baseName}_images`);
     let imageIndex = 0;
@@ -30249,10 +30273,10 @@ class WordToMdConverter {
             const base642 = imgBuffer2.toString("base64");
             return { src: `data:${image.contentType};base64,${base642}` };
           }
-          await mkdir(imagesDir, { recursive: true });
+          await promises$8.mkdir(imagesDir, { recursive: true });
           const imagePath = path.join(imagesDir, imageName);
           const imgBuffer = await image.read();
-          await writeFile(imagePath, imgBuffer);
+          await promises$8.writeFile(imagePath, imgBuffer);
           return { src: `./${baseName}_images/${imageName}` };
         })
       }
@@ -30273,8 +30297,8 @@ class WordToMdConverter {
     markdown = markdown.replace(/\n{3,}/g, "\n\n");
     onProgress(80);
     const outputPath = path.join(outputDir, `${baseName}.md`);
-    await writeFile(outputPath, markdown, "utf-8");
-    const outputStat = await stat(outputPath);
+    await promises$8.writeFile(outputPath, markdown, "utf-8");
+    const outputStat = await promises$8.stat(outputPath);
     onProgress(100);
     return {
       outputPath,
@@ -30319,7 +30343,7 @@ class WordToPdfConverter {
     onProgress(10);
     const outputPath = await convertWithLibreOffice(inputPath, outputDir, "pdf");
     onProgress(90);
-    const outputStat = await stat(outputPath);
+    const outputStat = await promises$8.stat(outputPath);
     onProgress(100);
     return {
       outputPath,
@@ -30335,7 +30359,7 @@ class WordToHtmlConverter {
   async convert(input) {
     const { inputPath, outputDir, onProgress } = input;
     onProgress(10);
-    const buffer2 = await readFile$2(inputPath);
+    const buffer2 = await promises$8.readFile(inputPath);
     const baseName = path.basename(inputPath, path.extname(inputPath));
     const result2 = await lib$7.convertToHtml({ buffer: buffer2 });
     onProgress(60);
@@ -30358,8 +30382,8 @@ ${result2.value}
 </html>`;
     onProgress(80);
     const outputPath = path.join(outputDir, `${baseName}.html`);
-    await writeFile(outputPath, html2, "utf-8");
-    const outputStat = await stat(outputPath);
+    await promises$8.writeFile(outputPath, html2, "utf-8");
+    const outputStat = await promises$8.stat(outputPath);
     onProgress(100);
     return {
       outputPath,
@@ -30371,12 +30395,12 @@ var __defProp2 = Object.defineProperty;
 var __defProps = Object.defineProperties;
 var __getOwnPropDescs = Object.getOwnPropertyDescriptors;
 var __getOwnPropSymbols = Object.getOwnPropertySymbols;
-var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __hasOwnProp2 = Object.prototype.hasOwnProperty;
 var __propIsEnum = Object.prototype.propertyIsEnumerable;
 var __defNormalProp2 = (obj, key, value) => key in obj ? __defProp2(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __spreadValues = (a, b2) => {
   for (var prop in b2 || (b2 = {}))
-    if (__hasOwnProp.call(b2, prop))
+    if (__hasOwnProp2.call(b2, prop))
       __defNormalProp2(a, prop, b2[prop]);
   if (__getOwnPropSymbols)
     for (var prop of __getOwnPropSymbols(b2)) {
@@ -30616,22 +30640,22 @@ function requireEvents() {
   var NumberIsNaN = Number.isNaN || function NumberIsNaN2(value) {
     return value !== value;
   };
-  function EventEmitter2() {
-    EventEmitter2.init.call(this);
+  function EventEmitter() {
+    EventEmitter.init.call(this);
   }
-  events.exports = EventEmitter2;
+  events.exports = EventEmitter;
   events.exports.once = once2;
-  EventEmitter2.EventEmitter = EventEmitter2;
-  EventEmitter2.prototype._events = void 0;
-  EventEmitter2.prototype._eventsCount = 0;
-  EventEmitter2.prototype._maxListeners = void 0;
+  EventEmitter.EventEmitter = EventEmitter;
+  EventEmitter.prototype._events = void 0;
+  EventEmitter.prototype._eventsCount = 0;
+  EventEmitter.prototype._maxListeners = void 0;
   var defaultMaxListeners = 10;
   function checkListener(listener) {
     if (typeof listener !== "function") {
       throw new TypeError('The "listener" argument must be of type Function. Received type ' + typeof listener);
     }
   }
-  Object.defineProperty(EventEmitter2, "defaultMaxListeners", {
+  Object.defineProperty(EventEmitter, "defaultMaxListeners", {
     enumerable: true,
     get: function() {
       return defaultMaxListeners;
@@ -30643,14 +30667,14 @@ function requireEvents() {
       defaultMaxListeners = arg;
     }
   });
-  EventEmitter2.init = function() {
+  EventEmitter.init = function() {
     if (this._events === void 0 || this._events === Object.getPrototypeOf(this)._events) {
       this._events = /* @__PURE__ */ Object.create(null);
       this._eventsCount = 0;
     }
     this._maxListeners = this._maxListeners || void 0;
   };
-  EventEmitter2.prototype.setMaxListeners = function setMaxListeners(n) {
+  EventEmitter.prototype.setMaxListeners = function setMaxListeners(n) {
     if (typeof n !== "number" || n < 0 || NumberIsNaN(n)) {
       throw new RangeError('The value of "n" is out of range. It must be a non-negative number. Received ' + n + ".");
     }
@@ -30659,13 +30683,13 @@ function requireEvents() {
   };
   function _getMaxListeners(that) {
     if (that._maxListeners === void 0)
-      return EventEmitter2.defaultMaxListeners;
+      return EventEmitter.defaultMaxListeners;
     return that._maxListeners;
   }
-  EventEmitter2.prototype.getMaxListeners = function getMaxListeners() {
+  EventEmitter.prototype.getMaxListeners = function getMaxListeners() {
     return _getMaxListeners(this);
   };
-  EventEmitter2.prototype.emit = function emit(type2) {
+  EventEmitter.prototype.emit = function emit(type2) {
     var args = [];
     for (var i = 1; i < arguments.length; i++) args.push(arguments[i]);
     var doError = type2 === "error";
@@ -30742,11 +30766,11 @@ function requireEvents() {
     }
     return target;
   }
-  EventEmitter2.prototype.addListener = function addListener(type2, listener) {
+  EventEmitter.prototype.addListener = function addListener(type2, listener) {
     return _addListener(this, type2, listener, false);
   };
-  EventEmitter2.prototype.on = EventEmitter2.prototype.addListener;
-  EventEmitter2.prototype.prependListener = function prependListener(type2, listener) {
+  EventEmitter.prototype.on = EventEmitter.prototype.addListener;
+  EventEmitter.prototype.prependListener = function prependListener(type2, listener) {
     return _addListener(this, type2, listener, true);
   };
   function onceWrapper() {
@@ -30765,17 +30789,17 @@ function requireEvents() {
     state2.wrapFn = wrapped;
     return wrapped;
   }
-  EventEmitter2.prototype.once = function once22(type2, listener) {
+  EventEmitter.prototype.once = function once22(type2, listener) {
     checkListener(listener);
     this.on(type2, _onceWrap(this, type2, listener));
     return this;
   };
-  EventEmitter2.prototype.prependOnceListener = function prependOnceListener(type2, listener) {
+  EventEmitter.prototype.prependOnceListener = function prependOnceListener(type2, listener) {
     checkListener(listener);
     this.prependListener(type2, _onceWrap(this, type2, listener));
     return this;
   };
-  EventEmitter2.prototype.removeListener = function removeListener(type2, listener) {
+  EventEmitter.prototype.removeListener = function removeListener(type2, listener) {
     var list, events2, position2, i, originalListener;
     checkListener(listener);
     events2 = this._events;
@@ -30815,8 +30839,8 @@ function requireEvents() {
     }
     return this;
   };
-  EventEmitter2.prototype.off = EventEmitter2.prototype.removeListener;
-  EventEmitter2.prototype.removeAllListeners = function removeAllListeners(type2) {
+  EventEmitter.prototype.off = EventEmitter.prototype.removeListener;
+  EventEmitter.prototype.removeAllListeners = function removeAllListeners(type2) {
     var listeners, events2, i;
     events2 = this._events;
     if (events2 === void 0)
@@ -30867,20 +30891,20 @@ function requireEvents() {
       return unwrap ? [evlistener.listener || evlistener] : [evlistener];
     return unwrap ? unwrapListeners(evlistener) : arrayClone(evlistener, evlistener.length);
   }
-  EventEmitter2.prototype.listeners = function listeners(type2) {
+  EventEmitter.prototype.listeners = function listeners(type2) {
     return _listeners(this, type2, true);
   };
-  EventEmitter2.prototype.rawListeners = function rawListeners(type2) {
+  EventEmitter.prototype.rawListeners = function rawListeners(type2) {
     return _listeners(this, type2, false);
   };
-  EventEmitter2.listenerCount = function(emitter, type2) {
+  EventEmitter.listenerCount = function(emitter, type2) {
     if (typeof emitter.listenerCount === "function") {
       return emitter.listenerCount(type2);
     } else {
       return listenerCount.call(emitter, type2);
     }
   };
-  EventEmitter2.prototype.listenerCount = listenerCount;
+  EventEmitter.prototype.listenerCount = listenerCount;
   function listenerCount(type2) {
     var events2 = this._events;
     if (events2 !== void 0) {
@@ -30893,7 +30917,7 @@ function requireEvents() {
     }
     return 0;
   }
-  EventEmitter2.prototype.eventNames = function eventNames() {
+  EventEmitter.prototype.eventNames = function eventNames() {
     return this._eventsCount > 0 ? ReflectOwnKeys(this._events) : [];
   };
   function arrayClone(arr, n) {
@@ -33979,12 +34003,12 @@ var hasRequiredCallBind;
 function requireCallBind() {
   if (hasRequiredCallBind) return callBind.exports;
   hasRequiredCallBind = 1;
-  (function(module) {
+  (function(module2) {
     var setFunctionLength2 = /* @__PURE__ */ requireSetFunctionLength();
     var $defineProperty = /* @__PURE__ */ requireEsDefineProperty();
     var callBindBasic = requireCallBindApplyHelpers();
     var applyBind2 = requireApplyBind();
-    module.exports = function callBind2(originalFunction) {
+    module2.exports = function callBind2(originalFunction) {
       var func = callBindBasic(arguments);
       var adjustedLength = originalFunction.length - (arguments.length - 1);
       return setFunctionLength2(
@@ -33994,9 +34018,9 @@ function requireCallBind() {
       );
     };
     if ($defineProperty) {
-      $defineProperty(module.exports, "apply", { value: applyBind2 });
+      $defineProperty(module2.exports, "apply", { value: applyBind2 });
     } else {
-      module.exports.apply = applyBind2;
+      module2.exports.apply = applyBind2;
     }
   })(callBind);
   return callBind.exports;
@@ -35979,7 +36003,7 @@ var hasRequiredSafeBuffer;
 function requireSafeBuffer() {
   if (hasRequiredSafeBuffer) return safeBuffer.exports;
   hasRequiredSafeBuffer = 1;
-  (function(module, exports$1) {
+  (function(module2, exports$1) {
     var buffer2 = requireBuffer();
     var Buffer2 = buffer2.Buffer;
     function copyProps(src, dst) {
@@ -35988,7 +36012,7 @@ function requireSafeBuffer() {
       }
     }
     if (Buffer2.from && Buffer2.alloc && Buffer2.allocUnsafe && Buffer2.allocUnsafeSlow) {
-      module.exports = buffer2;
+      module2.exports = buffer2;
     } else {
       copyProps(buffer2, exports$1);
       exports$1.Buffer = SafeBuffer;
@@ -45662,9 +45686,9 @@ var hasRequiredJszip_min;
 function requireJszip_min() {
   if (hasRequiredJszip_min) return jszip_min.exports;
   hasRequiredJszip_min = 1;
-  (function(module, exports$1) {
+  (function(module2, exports$1) {
     !function(e) {
-      module.exports = e();
+      module2.exports = e();
     }(function() {
       return function s(a, o, h) {
         function u3(r, e2) {
@@ -48987,7 +49011,7 @@ class PptToWordConverter {
     const { inputPath, outputDir, onProgress } = input;
     onProgress(10);
     const JSZipLib = await loadJSZip();
-    const buffer2 = await readFile$2(inputPath);
+    const buffer2 = await promises$8.readFile(inputPath);
     const zip2 = await JSZipLib.loadAsync(buffer2);
     const slideFiles = [];
     zip2.forEach((relativePath) => {
@@ -49047,8 +49071,8 @@ class PptToWordConverter {
     const docxBuffer = await Packer.toBuffer(doc);
     onProgress(90);
     const outputPath = path.join(outputDir, `${baseName}.docx`);
-    await writeFile(outputPath, docxBuffer);
-    const outputStat = await stat(outputPath);
+    await promises$8.writeFile(outputPath, docxBuffer);
+    const outputStat = await promises$8.stat(outputPath);
     onProgress(100);
     return {
       outputPath,
@@ -49085,7 +49109,7 @@ class PptToPdfConverter {
     onProgress(10);
     const outputPath = await convertWithLibreOffice(inputPath, outputDir, "pdf");
     onProgress(90);
-    const outputStat = await stat(outputPath);
+    const outputStat = await promises$8.stat(outputPath);
     onProgress(100);
     return {
       outputPath,
@@ -49103,11 +49127,11 @@ class PptToImageConverter {
     onProgress(10);
     const baseName = path.basename(inputPath, path.extname(inputPath));
     const imagesDir = path.join(outputDir, `${baseName}_slides`);
-    await mkdir(imagesDir, { recursive: true });
+    await promises$8.mkdir(imagesDir, { recursive: true });
     onProgress(20);
     const pdfPath = await convertWithLibreOffice(inputPath, imagesDir, "pdf");
     onProgress(90);
-    const outputStat = await stat(pdfPath);
+    const outputStat = await promises$8.stat(pdfPath);
     onProgress(100);
     return {
       outputPath: pdfPath,
@@ -49125,10 +49149,10 @@ class PdfToWordConverter {
     var _a2;
     const { inputPath, outputDir, onProgress } = input;
     onProgress(10);
-    const buffer2 = await readFile$2(inputPath);
+    const buffer2 = await promises$8.readFile(inputPath);
     let pdfData;
     try {
-      const _require = createRequire(import.meta.url);
+      const _require = node_module.createRequire(typeof document === "undefined" ? require("url").pathToFileURL(__filename).href : _documentCurrentScript && _documentCurrentScript.tagName.toUpperCase() === "SCRIPT" && _documentCurrentScript.src || new URL("main.js", document.baseURI).href);
       const pdfParse = _require("pdf-parse");
       pdfData = await pdfParse(buffer2);
     } catch (e) {
@@ -49174,8 +49198,8 @@ class PdfToWordConverter {
     const docxBuffer = await Packer.toBuffer(doc);
     onProgress(90);
     const outputPath = path.join(outputDir, `${baseName}.docx`);
-    await writeFile(outputPath, docxBuffer);
-    const outputStat = await stat(outputPath);
+    await promises$8.writeFile(outputPath, docxBuffer);
+    const outputStat = await promises$8.stat(outputPath);
     onProgress(100);
     return {
       outputPath,
@@ -49192,10 +49216,10 @@ class PdfToMdConverter {
     var _a2;
     const { inputPath, outputDir, onProgress } = input;
     onProgress(10);
-    const buffer2 = await readFile$2(inputPath);
+    const buffer2 = await promises$8.readFile(inputPath);
     let pdfData;
     try {
-      const _require = createRequire(import.meta.url);
+      const _require = node_module.createRequire(typeof document === "undefined" ? require("url").pathToFileURL(__filename).href : _documentCurrentScript && _documentCurrentScript.tagName.toUpperCase() === "SCRIPT" && _documentCurrentScript.src || new URL("main.js", document.baseURI).href);
       const pdfParse = _require("pdf-parse");
       pdfData = await pdfParse(buffer2);
     } catch (e) {
@@ -49220,8 +49244,8 @@ class PdfToMdConverter {
     const markdown = mdLines.join("\n");
     onProgress(80);
     const outputPath = path.join(outputDir, `${baseName}.md`);
-    await writeFile(outputPath, markdown, "utf-8");
-    const outputStat = await stat(outputPath);
+    await promises$8.writeFile(outputPath, markdown, "utf-8");
+    const outputStat = await promises$8.stat(outputPath);
     onProgress(100);
     return {
       outputPath,
@@ -50381,7 +50405,7 @@ class MdToHtmlConverter {
   async convert(input) {
     const { inputPath, outputDir, onProgress } = input;
     onProgress(10);
-    const mdContent = await readFile$2(inputPath, "utf-8");
+    const mdContent = await promises$8.readFile(inputPath, "utf-8");
     const baseName = path.basename(inputPath, path.extname(inputPath));
     onProgress(30);
     g.setOptions({
@@ -50414,8 +50438,8 @@ ${htmlBody}
 </html>`;
     onProgress(80);
     const outputPath = path.join(outputDir, `${baseName}.html`);
-    await writeFile(outputPath, html2, "utf-8");
-    const outputStat = await stat(outputPath);
+    await promises$8.writeFile(outputPath, html2, "utf-8");
+    const outputStat = await promises$8.stat(outputPath);
     onProgress(100);
     return {
       outputPath,
@@ -50998,7 +51022,7 @@ class MdToWordConverter {
   async convert(input) {
     const { inputPath, outputDir, onProgress } = input;
     onProgress(10);
-    const mdContent = await readFile$2(inputPath, "utf-8");
+    const mdContent = await promises$8.readFile(inputPath, "utf-8");
     const baseName = path.basename(inputPath, path.extname(inputPath));
     onProgress(20);
     g.setOptions({ gfm: true, breaks: true });
@@ -51015,8 +51039,8 @@ ${htmlBody}
     onProgress(80);
     const outputPath = path.join(outputDir, `${baseName}.docx`);
     const buf = Buffer.isBuffer(docxBuffer) ? docxBuffer : Buffer.from(docxBuffer instanceof ArrayBuffer ? docxBuffer : await docxBuffer.arrayBuffer());
-    await writeFile(outputPath, buf);
-    const outputStat = await stat(outputPath);
+    await promises$8.writeFile(outputPath, buf);
+    const outputStat = await promises$8.stat(outputPath);
     onProgress(100);
     return {
       outputPath,
@@ -51032,7 +51056,7 @@ class HtmlToMdConverter {
   async convert(input) {
     const { inputPath, outputDir, onProgress } = input;
     onProgress(10);
-    const htmlContent = await readFile$2(inputPath, "utf-8");
+    const htmlContent = await promises$8.readFile(inputPath, "utf-8");
     const baseName = path.basename(inputPath, path.extname(inputPath));
     onProgress(30);
     const turndown = new TurndownService({
@@ -51050,8 +51074,8 @@ class HtmlToMdConverter {
     markdown = markdown.replace(/\n{3,}/g, "\n\n");
     onProgress(80);
     const outputPath = path.join(outputDir, `${baseName}.md`);
-    await writeFile(outputPath, markdown, "utf-8");
-    const outputStat = await stat(outputPath);
+    await promises$8.writeFile(outputPath, markdown, "utf-8");
+    const outputStat = await promises$8.stat(outputPath);
     onProgress(100);
     return {
       outputPath,
@@ -51102,12 +51126,12 @@ function registerDocConvertHandlers() {
     new MdToWordConverter(),
     new HtmlToMdConverter()
   ]);
-  ipcMain.handle("docConvert:start", async (_event, data) => {
+  electron.ipcMain.handle("docConvert:start", async (_event, data) => {
     if (!queue || !engine) return { success: false, error: "引擎未初始化" };
     console.log("[docConvert] 开始转换, 文件数:", data.files.length, "方向:", data.config.direction);
     try {
       const tasks = queue.addTasks(data.files, data.config);
-      const win2 = BrowserWindow.getAllWindows()[0];
+      const win2 = electron.BrowserWindow.getAllWindows()[0];
       if (win2) {
         const pushEvent = (channel, eventData) => {
           if (!win2.isDestroyed()) {
@@ -51130,20 +51154,20 @@ function registerDocConvertHandlers() {
       return { success: false, error: e.message };
     }
   });
-  ipcMain.handle("docConvert:cancel", async () => {
+  electron.ipcMain.handle("docConvert:cancel", async () => {
     queue == null ? void 0 : queue.cancel();
     return { success: true };
   });
-  ipcMain.handle("docConvert:getStatus", async () => {
+  electron.ipcMain.handle("docConvert:getStatus", async () => {
     return (queue == null ? void 0 : queue.getStatus()) ?? { running: false, queueLength: 0, tasks: [] };
   });
-  ipcMain.handle("docConvert:checkLibreOffice", async () => {
+  electron.ipcMain.handle("docConvert:checkLibreOffice", async () => {
     return await detectLibreOffice();
   });
-  ipcMain.handle("docConvert:selectOutputDir", async () => {
-    const win2 = BrowserWindow.getAllWindows()[0];
+  electron.ipcMain.handle("docConvert:selectOutputDir", async () => {
+    const win2 = electron.BrowserWindow.getAllWindows()[0];
     if (!win2) return { success: false, error: "无窗口" };
-    const result2 = await dialog.showOpenDialog(win2, {
+    const result2 = await electron.dialog.showOpenDialog(win2, {
       title: "选择输出目录",
       properties: ["openDirectory"]
     });
@@ -51152,19 +51176,12 @@ function registerDocConvertHandlers() {
     }
     return { success: true, path: result2.filePaths[0] };
   });
-  ipcMain.handle("docConvert:openOutputDir", async (_event, dirPath) => {
+  electron.ipcMain.handle("docConvert:openOutputDir", async (_event, dirPath) => {
     try {
-      await shell.openPath(dirPath);
+      await electron.shell.openPath(dirPath);
       return { success: true };
     } catch (e) {
       return { success: false, error: e.message };
-    }
-  });
-  ipcMain.handle("file:readText", async (_event, filePath) => {
-    try {
-      return await readFile$2(filePath, "utf-8");
-    } catch (e) {
-      throw new Error(`无法读取文件: ${e.message}`);
     }
   });
   console.log("[docConvert] IPC handlers 已注册");
@@ -51175,8 +51192,8 @@ function cleanupDocConvertHandlers() {
   engine = null;
   queue = null;
 }
-const require$1 = createRequire(import.meta.url);
-const __dirname$1 = path.dirname(fileURLToPath(import.meta.url));
+const require$1 = node_module.createRequire(typeof document === "undefined" ? require("url").pathToFileURL(__filename).href : _documentCurrentScript && _documentCurrentScript.tagName.toUpperCase() === "SCRIPT" && _documentCurrentScript.src || new URL("main.js", document.baseURI).href);
+const __dirname$1 = path.dirname(node_url.fileURLToPath(typeof document === "undefined" ? require("url").pathToFileURL(__filename).href : _documentCurrentScript && _documentCurrentScript.tagName.toUpperCase() === "SCRIPT" && _documentCurrentScript.src || new URL("main.js", document.baseURI).href));
 process.env.APP_ROOT = path.join(__dirname$1, "..");
 const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
 const MAIN_DIST = path.join(process.env.APP_ROOT, "dist-electron");
@@ -51184,9 +51201,9 @@ const RENDERER_DIST = path.join(process.env.APP_ROOT, "dist");
 process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, "public") : RENDERER_DIST;
 let win;
 function createWindow() {
-  nativeTheme.themeSource = "light";
-  Menu.setApplicationMenu(null);
-  win = new BrowserWindow({
+  electron.nativeTheme.themeSource = "light";
+  electron.Menu.setApplicationMenu(null);
+  win = new electron.BrowserWindow({
     width: 1280,
     height: 800,
     minWidth: 960,
@@ -51195,7 +51212,7 @@ function createWindow() {
     icon: path.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
     backgroundColor: "#ffffff",
     webPreferences: {
-      preload: path.join(__dirname$1, "preload.mjs")
+      preload: path.join(__dirname$1, "preload.js")
     }
   });
   if (VITE_DEV_SERVER_URL) {
@@ -51204,27 +51221,27 @@ function createWindow() {
     win.loadFile(path.join(RENDERER_DIST, "index.html"));
   }
 }
-ipcMain.handle("dialog:openFiles", async (_event, options) => {
-  const result2 = await dialog.showOpenDialog({
+electron.ipcMain.handle("dialog:openFiles", async (_event, options) => {
+  const result2 = await electron.dialog.showOpenDialog({
     properties: options.properties || ["openFile", "multiSelections"],
     filters: options.filters || []
   });
   return result2.filePaths;
 });
-ipcMain.handle("dialog:openFolder", async () => {
-  const result2 = await dialog.showOpenDialog({ properties: ["openDirectory"] });
+electron.ipcMain.handle("dialog:openFolder", async () => {
+  const result2 = await electron.dialog.showOpenDialog({ properties: ["openDirectory"] });
   return result2.filePaths[0] || null;
 });
-ipcMain.handle("dialog:saveDir", async () => {
-  const result2 = await dialog.showOpenDialog({ properties: ["openDirectory", "createDirectory"] });
+electron.ipcMain.handle("dialog:saveDir", async () => {
+  const result2 = await electron.dialog.showOpenDialog({ properties: ["openDirectory", "createDirectory"] });
   return result2.filePaths[0] || null;
 });
-ipcMain.handle("file:readText", async (_event, filePath) => {
+electron.ipcMain.handle("file:readText", async (_event, filePath) => {
   const fs2 = await import("node:fs");
   return fs2.readFileSync(filePath, "utf-8");
 });
 const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp", ".gif", ".avif", ".tiff", ".tif", ".bmp", ".ico", ".svg"];
-ipcMain.handle("file:listImages", async (_event, folderPath) => {
+electron.ipcMain.handle("file:listImages", async (_event, folderPath) => {
   const fs2 = await import("node:fs");
   const results2 = [];
   function walk(dir) {
@@ -51241,8 +51258,8 @@ ipcMain.handle("file:listImages", async (_event, folderPath) => {
   walk(folderPath);
   return results2;
 });
-ipcMain.handle("theme:toggle", async (_event, isDark) => {
-  nativeTheme.themeSource = isDark ? "dark" : "light";
+electron.ipcMain.handle("theme:toggle", async (_event, isDark) => {
+  electron.nativeTheme.themeSource = isDark ? "dark" : "light";
   if (win) {
     win.setBackgroundColor(isDark ? "#0f1123" : "#ffffff");
   }
@@ -51254,26 +51271,26 @@ registerSystemHandlers();
 registerConfigHandlers();
 registerClickerHandlers();
 registerDocConvertHandlers();
-app.on("window-all-closed", () => {
+electron.app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     cleanupClickerHandlers();
     cleanupDocConvertHandlers();
-    app.quit();
+    electron.app.quit();
     win = null;
   }
 });
-app.on("activate", () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
+electron.app.on("activate", () => {
+  if (electron.BrowserWindow.getAllWindows().length === 0) {
     createWindow();
   }
 });
-app.whenReady().then(() => {
+electron.app.whenReady().then(() => {
   createWindow();
   registerClickerHotkeys();
-  const { globalShortcut: globalShortcut2 } = require$1("electron");
-  globalShortcut2.register("CmdOrCtrl+O", () => {
+  const { globalShortcut } = require$1("electron");
+  globalShortcut.register("CmdOrCtrl+O", () => {
     if (!win) return;
-    dialog.showOpenDialog(win, {
+    electron.dialog.showOpenDialog(win, {
       properties: ["openFile", "multiSelections"]
     }).then((result2) => {
       if (result2.filePaths.length > 0) {
@@ -51281,9 +51298,9 @@ app.whenReady().then(() => {
       }
     });
   });
-  globalShortcut2.register("CmdOrCtrl+Shift+O", () => {
+  globalShortcut.register("CmdOrCtrl+Shift+O", () => {
     if (!win) return;
-    dialog.showOpenDialog(win, {
+    electron.dialog.showOpenDialog(win, {
       properties: ["openDirectory"]
     }).then((result2) => {
       if (result2.filePaths[0]) {
@@ -51292,8 +51309,6 @@ app.whenReady().then(() => {
     });
   });
 });
-export {
-  MAIN_DIST,
-  RENDERER_DIST,
-  VITE_DEV_SERVER_URL
-};
+exports.MAIN_DIST = MAIN_DIST;
+exports.RENDERER_DIST = RENDERER_DIST;
+exports.VITE_DEV_SERVER_URL = VITE_DEV_SERVER_URL;

@@ -5,7 +5,6 @@
  * 通道前缀使用 docConvert: 避免与图片格式转换 convert: 冲突
  */
 import { ipcMain, dialog, shell, BrowserWindow } from 'electron'
-import { readFile } from 'node:fs/promises'
 import { ConvertEngine } from '../core/converter/ConvertEngine'
 import { ConvertQueue } from '../core/converter/ConvertQueue'
 import { detectLibreOffice } from '../core/converter/libreoffice'
@@ -133,14 +132,7 @@ export function registerDocConvertHandlers() {
     }
   })
 
-  /** 读取文件文本内容（预览用） */
-  ipcMain.handle('file:readText', async (_event, filePath: string) => {
-    try {
-      return await readFile(filePath, 'utf-8')
-    } catch (e: any) {
-      throw new Error(`无法读取文件: ${e.message}`)
-    }
-  })
+
 
   console.log('[docConvert] IPC handlers 已注册')
 }

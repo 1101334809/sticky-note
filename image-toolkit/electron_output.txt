@@ -1,0 +1,10 @@
+
+App threw an error during load
+ReferenceError: require is not defined in ES module scope, you can use import instead
+This file is being treated as an ES module because it has a '.js' file extension and 'D:\elctrons\sticky-note\image-toolkit\package.json' contains "type": "module". To treat it as a CommonJS script, rename it to use the '.cjs' file extension.
+    at createHTMLParser (file:///D:/elctrons/sticky-note/image-toolkit/dist-electron/main.js:29962:18)
+    at file:///D:/elctrons/sticky-note/image-toolkit/dist-electron/main.js:29969:60
+    at ModuleJob.run (node:internal/modules/esm/module_job:222:25)
+    at async ModuleLoader.import (node:internal/modules/esm/loader:316:24)
+    at async loadApplicationPackage (file:///D:/elctrons/sticky-note/image-toolkit/node_modules/electron/dist/resources/default_app.asar/main.js:129:9)
+    at async file:///D:/elctrons/sticky-note/image-toolkit/node_modules/electron/dist/resources/default_app.asar/main.js:241:9

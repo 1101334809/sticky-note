@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文档转换 - Modern UI Design</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-body: #f5f7fa;
+            --bg-card: rgba(255, 255, 255, 0.85);
+            --bg-card-hover: rgba(255, 255, 255, 0.95);
+            --primary: #5c6bc0;
+            --primary-hover: #4f5b93;
+            --primary-light: rgba(92, 107, 192, 0.1);
+            --text-main: #2d3748;
+            --text-muted: #718096;
+            --border-color: rgba(226, 232, 240, 0.8);
+            --success: #48bb78;
+            --danger: #f56565;
+            --shadow-sm: 0 4px 6px rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 10px 25px rgba(0, 0, 0, 0.08);
+            --shadow-lg: 0 20px 40px rgba(92, 107, 192, 0.12);
+            --radius-md: 12px;
+            --radius-lg: 20px;
+            --radius-xl: 24px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-image: 
+                radial-gradient(at 0% 0%, hsla(253,16%,7%,0) 0, transparent 50%), 
+                radial-gradient(at 50% 0%, hsla(225,39%,30%,0.05) 0, transparent 50%), 
+                radial-gradient(at 100% 0%, hsla(339,49%,30%,0.05) 0, transparent 50%);
+            padding: 40px 20px;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 800px;
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-lg);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            padding: 40px 40px 20px;
+            text-align: center;
+        }
+
+        .title {
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: var(--text-muted);
+            font-weight: 400;
+        }
+
+        .main-content {
+            padding: 0 40px 40px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        /* Format Selector */
+        .format-selector {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            background: rgba(247, 250, 252, 0.6);
+            padding: 20px;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-color);
+        }
+
+        .format-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            flex: 1;
+        }
+
+        .format-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-left: 4px;
+        }
+
+        .select-wrapper {
+            position: relative;
+        }
+
+        select {
+            appearance: none;
+            width: 100%;
+            padding: 14px 40px 14px 16px;
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--text-main);
+            background: #ffffff;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: var(--shadow-sm);
+            font-family: inherit;
+        }
+
+        select:hover {
+            border-color: #cbd5e0;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-light);
+        }
+
+        .select-icon {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            pointer-events: none;
+            color: var(--text-muted);
+        }
+
+        .format-arrow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            background: #ffffff;
+            border-radius: 50%;
+            color: var(--primary);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+            margin-top: 20px;
+            flex-shrink: 0;
+        }
+
+        /* Drop Zone */
+        .drop-zone {
+            position: relative;
+            border: 2px dashed #cbd5e0;
+            border-radius: var(--radius-lg);
+            padding: 60px 20px;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.4);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+            overflow: hidden;
+        }
+
+        .drop-zone:hover, .drop-zone.active {
+            border-color: var(--primary);
+            background: var(--primary-light);
+            transform: translateY(-2px);
+        }
+
+        .drop-icon {
+            width: 64px;
+            height: 64px;
+            background: #ffffff;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: var(--shadow-md);
+            color: var(--primary);
+            transition: transform 0.3s ease;
+        }
+
+        .drop-zone:hover .drop-icon {
+            transform: scale(1.05) translateY(-4px);
+        }
+
+        .drop-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .drop-desc {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        .drop-browse {
+            color: var(--primary);
+            font-weight: 600;
+            text-decoration: underline;
+            text-underline-offset: 4px;
+        }
+
+        /* File List */
+        .file-list-container {
+            display: none;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .file-list-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 4px;
+        }
+
+        .file-count {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .clear-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .clear-btn:hover {
+            color: var(--danger);
+        }
+
+        .file-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: 250px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .file-list::-webkit-scrollbar {
+            width: 6px;
+        }
+        .file-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .file-list::-webkit-scrollbar-thumb {
+            background: #cbd5e0;
+            border-radius: 10px;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px;
+            background: #ffffff;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-sm);
+            transition: all 0.2s ease;
+        }
+
+        .file-item:hover {
+            box-shadow: var(--shadow-md);
+            border-color: #cbd5e0;
+        }
+
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .file-icon {
+            width: 32px;
+            height: 32px;
+            background: rgba(226, 232, 240, 0.5);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary);
+            flex-shrink: 0;
+        }
+
+        .file-details {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            min-width: 0;
+        }
+
+        .file-name {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-main);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .file-size {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .file-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-badge {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            background: #edf2f7;
+            color: var(--text-muted);
+        }
+
+        .status-badge.converting {
+            background: var(--primary-light);
+            color: var(--primary);
+        }
+
+        .status-badge.success {
+            background: rgba(72, 187, 120, 0.1);
+            color: var(--success);
+        }
+
+        .action-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .action-btn:hover {
+            background: #edf2f7;
+            color: var(--text-main);
+        }
+
+        .action-btn.delete:hover {
+            background: rgba(245, 101, 101, 0.1);
+            color: var(--danger);
+        }
+
+        /* Settings Row */
+        .settings-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px;
+            background: rgba(247, 250, 252, 0.8);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+        }
+
+        .setting-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-main);
+        }
+
+        .setting-path {
+            font-size: 13px;
+            color: var(--text-muted);
+            max-width: 200px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .setting-btn {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--primary);
+            background: transparent;
+            border: none;
+            cursor: pointer;
+        }
+
+        .setting-btn:hover {
+            text-decoration: underline;
+        }
+
+        /* Main Button */
+        .btn-primary {
+            width: 100%;
+            padding: 18px;
+            border: none;
+            border-radius: var(--radius-md);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 14px 28px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:active {
+            transform: translateY(1px);
+        }
+
+        .btn-primary:disabled {
+            background: #cbd5e0;
+            box-shadow: none;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Icons (Inline SVG) */
+        svg {
+            width: 1.2em;
+            height: 1.2em;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <!-- Header -->
+        <div class="header">
+            <h1 class="title">文档转换大师</h1>
+            <p class="subtitle">极速、安全的本地文档格式互转工具</p>
+        </div>
+
+        <div class="main-content">
+            <!-- Format Selector -->
+            <div class="format-selector">
+                <div class="format-group">
+                    <span class="format-label">转换前 (源格式)</span>
+                    <div class="select-wrapper">
+                        <select id="sourceFormat">
+                            <option value="docx" selected>Word 文档 (.docx)</option>
+                            <option value="pptx">PPT 幻灯片 (.pptx)</option>
+                            <option value="pdf">PDF 原件 (.pdf)</option>
+                            <option value="md">Markdown 文档 (.md)</option>
+                            <option value="html">HTML 网页 (.html)</option>
+                        </select>
+                        <div class="select-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="format-arrow">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                </div>
+
+                <div class="format-group">
+                    <span class="format-label">转换后 (目标格式)</span>
+                    <div class="select-wrapper">
+                        <select id="targetFormat">
+                            <option value="pdf">PDF 文档 (.pdf)</option>
+                            <option value="md" selected>Markdown 文档 (.md)</option>
+                            <option value="html">HTML 网页 (.html)</option>
+                        </select>
+                        <div class="select-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Drop Zone -->
+            <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+                <div class="drop-icon">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                </div>
+                <div>
+                    <div class="drop-title">拖拽文件到此处，或 <span class="drop-browse">浏览文件</span></div>
+                    <div class="drop-desc" style="margin-top: 8px;">支持 <b>.docx</b> 格式，最大支持 50MB</div>
+                </div>
+                <input type="file" id="fileInput" multiple style="display: none;" onchange="handleFiles(this.files)">
+            </div>
+
+            <!-- File List (Hidden by default, shown via JS) -->
+            <div class="file-list-container" id="fileListContainer">
+                <div class="file-list-header">
+                    <span class="file-count" id="fileCount">0 个文件</span>
+                    <button class="clear-btn" onclick="clearFiles()">清空列表</button>
+                </div>
+                <div class="file-list" id="fileList">
+                    <!-- File items injected here -->
+                </div>
+            </div>
+
+            <!-- Settings -->
+            <div class="settings-row">
+                <div class="setting-label">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                    输出目录
+                </div>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span class="setting-path">与源文件同目录</span>
+                    <button class="setting-btn">更改</button>
+                </div>
+            </div>
+
+            <!-- Action Button -->
+            <button class="btn-primary" id="startBtn" disabled>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                开始转换
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Simple Interaction Demo Script
+        const dropZone = document.getElementById('dropZone');
+        const fileListContainer = document.getElementById('fileListContainer');
+        const fileList = document.getElementById('fileList');
+        const fileCount = document.getElementById('fileCount');
+        const startBtn = document.getElementById('startBtn');
+        let files = [];
+
+        // Drag & Drop visual feedback
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.add('active'), false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.remove('active'), false);
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            handleFiles(e.dataTransfer.files);
+        });
+
+        function handleFiles(newFiles) {
+            if (newFiles.length === 0) return;
+            
+            // Add mock files
+            for (let i = 0; i < newFiles.length; i++) {
+                files.push({
+                    id: Date.now() + i,
+                    name: newFiles[i].name,
+                    size: formatBytes(newFiles[i].size),
+                    status: 'pending' // pending, converting, success
+                });
+            }
+            
+            updateUI();
+        }
+
+        function removeFile(id) {
+            files = files.filter(f => f.id !== id);
+            updateUI();
+        }
+
+        function clearFiles() {
+            files = [];
+            updateUI();
+        }
+
+        function formatBytes(bytes, decimals = 1) {
+            if (!+bytes) return '0 Bytes';
+            const k = 1024, dm = decimals < 0 ? 0 : decimals, sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+        }
+
+        function updateUI() {
+            if (files.length > 0) {
+                dropZone.style.display = 'none';
+                fileListContainer.style.display = 'flex';
+                fileCount.textContent = `${files.length} 个文件`;
+                startBtn.disabled = false;
+                
+                // Render list
+                fileList.innerHTML = files.map(f => `
+                    <div class="file-item">
+                        <div class="file-info">
+                            <div class="file-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px;"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
+                            </div>
+                            <div class="file-details">
+                                <span class="file-name" title="${f.name}">${f.name}</span>
+                                <span class="file-size">${f.size}</span>
+                            </div>
+                        </div>
+                        <div class="file-actions">
+                            <span class="status-badge">等待中</span>
+                            <button class="action-btn delete" onclick="removeFile(${f.id})">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                dropZone.style.display = 'flex';
+                fileListContainer.style.display = 'none';
+                startBtn.disabled = true;
+            }
+        }
+        
+        // Add a demo file initially to show the layout
+        /* uncomment to show initial state
+        handleFiles([{name: '2026年项目需求说明书(草案).docx', size: 1245000}]);
+        */
+    </script>
+</body>
+</html>
