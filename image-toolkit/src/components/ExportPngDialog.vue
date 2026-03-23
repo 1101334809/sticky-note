@@ -14,7 +14,7 @@ import { DownloadOutline, LockClosedOutline, LockOpenOutline } from '@vicons/ion
 import OutputDirPicker from './OutputDirPicker.vue'
 import { useSettingsStore } from '../stores/settings.store'
 
-const props = defineProps<{
+defineProps<{
   visible: boolean
   /** 选中的 SVG 数量 */
   fileCount: number

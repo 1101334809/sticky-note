@@ -5,25 +5,35 @@
   asar: true,
   productName: "ImageKit",
   directories: {
-    output: "release-new/${version}",
+    output: "release/${version}",
   },
-  // 只打包应用代码和 sharp 运行时依赖，排除前端 node_modules（已被 Vite 打包进 dist）
+  // 只打包应用代码和原生/外部运行时依赖，排除前端 node_modules（已被 Vite 打包进 dist）
   files: [
     "dist",
     "dist-electron",
     "!node_modules",
+    // sharp 及其依赖
     "node_modules/sharp/**/*",
     "node_modules/@img/**/*",
     "node_modules/detect-libc/**/*",
     "node_modules/semver/**/*",
+    // koffi（Win32 API 调用）
+    "node_modules/koffi/**/*",
+    // pdf-parse 及其依赖
+    "node_modules/pdf-parse/**/*",
+    // turndown（HTML → Markdown）及其依赖
+    "node_modules/turndown/**/*",
+    "node_modules/@mixmark-io/**/*",
   ],
-  // 将 sharp 原生 .node 文件解包（原生模块不能在 asar 中运行）
+  // 将原生 .node 文件解包（原生模块不能在 asar 中运行）
   asarUnpack: [
     "node_modules/sharp/**/*.node",
     "node_modules/@img/**/*.node",
     "node_modules/@img/**/sharp-*.dll",
     "node_modules/@img/**/*.so*",
     "node_modules/@img/**/*.dylib",
+    "node_modules/koffi/**/*.node",
+    "node_modules/koffi/**/*.dll",
   ],
   mac: {
     target: ["dmg"],

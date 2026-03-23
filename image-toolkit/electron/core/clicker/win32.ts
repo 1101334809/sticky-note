@@ -18,7 +18,8 @@ const MOUSEEVENTF_ABSOLUTE = 0x8000
 // ======== 结构体定义 ========
 
 // GetCursorPos 使用的 POINT 结构体
-const POINT = koffi.struct('POINT', {
+// GetCursorPos 签名中引用了 'POINT'，需要注册但不使用返回值
+void koffi.struct('POINT', {
   x: 'long',
   y: 'long',
 })

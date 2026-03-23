@@ -43,6 +43,7 @@ const require$$0$4 = require("fs");
 const require$$1$1 = require("url");
 const require$$2$1 = require("os");
 const require$$3 = require("path");
+const TurndownService = require("turndown");
 var _documentCurrentScript = typeof document !== "undefined" ? document.currentScript : null;
 function _mergeNamespaces(n, m2) {
   for (var i = 0; i < m2.length; i++) {
@@ -370,7 +371,7 @@ const MOUSEEVENTF_RIGHTUP = 16;
 const MOUSEEVENTF_MIDDLEDOWN = 32;
 const MOUSEEVENTF_MIDDLEUP = 64;
 const MOUSEEVENTF_ABSOLUTE = 32768;
-koffi.struct("POINT", {
+void koffi.struct("POINT", {
   x: "long",
   y: "long"
 });
@@ -891,7 +892,7 @@ function getAugmentedNamespace(n) {
 }
 var lib$7 = {};
 var VERSION = "1.13.8";
-var root$1 = typeof self == "object" && self.self === self && self || typeof global == "object" && global.global === global && global || Function("return this")() || {};
+var root = typeof self == "object" && self.self === self && self || typeof global == "object" && global.global === global && global || Function("return this")() || {};
 var ArrayProto = Array.prototype, ObjProto = Object.prototype;
 var SymbolProto = typeof Symbol !== "undefined" ? Symbol.prototype : null;
 var push = ArrayProto.push, slice = ArrayProto.slice, toString$2 = ObjProto.toString, hasOwnProperty = ObjProto.hasOwnProperty;
@@ -961,7 +962,7 @@ const isError = tagTester("Error");
 const isSymbol = tagTester("Symbol");
 const isArrayBuffer = tagTester("ArrayBuffer");
 var isFunction = tagTester("Function");
-var nodelist = root$1.document && root$1.document.childNodes;
+var nodelist = root.document && root.document.childNodes;
 if (typeof /./ != "function" && typeof Int8Array != "object" && typeof nodelist != "function") {
   isFunction = function(obj) {
     return typeof obj == "function" || false;
@@ -976,14 +977,14 @@ function alternateIsDataView(obj) {
 }
 const isDataView$1 = hasDataViewBug ? alternateIsDataView : isDataView;
 const isArray = nativeIsArray || tagTester("Array");
-function has$2(obj, key) {
+function has$1(obj, key) {
   return obj != null && hasOwnProperty.call(obj, key);
 }
 var isArguments$1 = tagTester("Arguments");
 (function() {
   if (!isArguments$1(arguments)) {
     isArguments$1 = function(obj) {
-      return has$2(obj, "callee");
+      return has$1(obj, "callee");
     };
   }
 })();
@@ -1037,7 +1038,7 @@ function collectNonEnumProps(obj, keys2) {
   var constructor = obj.constructor;
   var proto = isFunction$1(constructor) && constructor.prototype || ObjProto;
   var prop = "constructor";
-  if (has$2(obj, prop) && !keys2.contains(prop)) keys2.push(prop);
+  if (has$1(obj, prop) && !keys2.contains(prop)) keys2.push(prop);
   while (nonEnumIdx--) {
     prop = nonEnumerableProps[nonEnumIdx];
     if (prop in obj && obj[prop] !== proto[prop] && !keys2.contains(prop)) {
@@ -1049,7 +1050,7 @@ function keys(obj) {
   if (!isObject(obj)) return [];
   if (nativeKeys) return nativeKeys(obj);
   var keys2 = [];
-  for (var key in obj) if (has$2(obj, key)) keys2.push(key);
+  for (var key in obj) if (has$1(obj, key)) keys2.push(key);
   if (hasEnumBug) collectNonEnumProps(obj, keys2);
   return keys2;
 }
@@ -1178,7 +1179,7 @@ function isEqual(a, b2) {
       if (keys(b2).length !== length) return false;
       while (length--) {
         key = _keys[length];
-        if (!has$2(b2, key)) return false;
+        if (!has$1(b2, key)) return false;
         todo.push({ a: a[key], b: b2[key] });
       }
     }
@@ -1258,7 +1259,7 @@ function createAssigner(keysFunc, defaults2) {
     return obj;
   };
 }
-const extend$1 = createAssigner(allKeys);
+const extend = createAssigner(allKeys);
 const extendOwn = createAssigner(keys);
 const defaults$2 = createAssigner(allKeys, true);
 function ctor() {
@@ -1281,7 +1282,7 @@ function create(prototype, props2) {
 }
 function clone(obj) {
   if (!isObject(obj)) return obj;
-  return isArray(obj) ? obj.slice() : extend$1({}, obj);
+  return isArray(obj) ? obj.slice() : extend({}, obj);
 }
 function tap(obj, interceptor) {
   interceptor(obj);
@@ -1306,12 +1307,12 @@ function get$1(object2, path2, defaultValue) {
   var value = deepGet(object2, toPath(path2));
   return isUndefined(value) ? defaultValue : value;
 }
-function has$1(obj, path2) {
+function has(obj, path2) {
   path2 = toPath(path2);
   var length = path2.length;
   for (var i = 0; i < length; i++) {
     var key = path2[i];
-    if (!has$2(obj, key)) return false;
+    if (!has$1(obj, key)) return false;
     obj = obj[key];
   }
   return !!length;
@@ -1427,7 +1428,7 @@ const templateSettings = _$j.templateSettings = {
   escape: /<%-([\s\S]+?)%>/g
 };
 var noMatch = /(.)^/;
-var escapes$1 = {
+var escapes = {
   "'": "'",
   "\\": "\\",
   "\r": "r",
@@ -1437,7 +1438,7 @@ var escapes$1 = {
 };
 var escapeRegExp = /\\|'|\r|\n|\u2028|\u2029/g;
 function escapeChar(match) {
-  return "\\" + escapes$1[match];
+  return "\\" + escapes[match];
 }
 var bareIdentifier = /^\s*(\w|\$)+\s*$/;
 function template(text, settings, oldSettings) {
@@ -1581,7 +1582,7 @@ function memoize(func, hasher) {
   var memoize2 = function(key) {
     var cache = memoize2.cache;
     var address = "" + (hasher ? hasher.apply(this, arguments) : key);
-    if (!has$2(cache, address)) cache[address] = func.apply(this, arguments);
+    if (!has$1(cache, address)) cache[address] = func.apply(this, arguments);
     return cache[address];
   };
   memoize2.cache = {};
@@ -1800,7 +1801,7 @@ function createReduce(dir) {
     return reducer(obj, optimizeCb(iteratee2, context2, 4), memo, initial2);
   };
 }
-const reduce$2 = createReduce(1);
+const reduce$1 = createReduce(1);
 const reduceRight = createReduce(-1);
 function filter$1(obj, predicate, context2) {
   var results2 = [];
@@ -1968,14 +1969,14 @@ function group(behavior, partition2) {
   };
 }
 const groupBy = group(function(result2, value, key) {
-  if (has$2(result2, key)) result2[key].push(value);
+  if (has$1(result2, key)) result2[key].push(value);
   else result2[key] = [value];
 });
 const indexBy = group(function(result2, value, key) {
   result2[key] = value;
 });
 const countBy = group(function(result2, value, key) {
-  if (has$2(result2, key)) result2[key]++;
+  if (has$1(result2, key)) result2[key]++;
   else result2[key] = 1;
 });
 const partition = group(function(result2, value, pass) {
@@ -2203,7 +2204,7 @@ const allExports = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.definePr
   each: each$1,
   escape,
   every,
-  extend: extend$1,
+  extend,
   extendOwn,
   filter: filter$1,
   find: find$2,
@@ -2213,13 +2214,13 @@ const allExports = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.definePr
   findWhere,
   first,
   flatten,
-  foldl: reduce$2,
+  foldl: reduce$1,
   foldr: reduceRight,
   forEach: each$1,
   functions,
   get: get$1,
   groupBy,
-  has: has$1,
+  has,
   head: first,
   identity: identity$2,
   include: contains,
@@ -2227,7 +2228,7 @@ const allExports = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.definePr
   indexBy,
   indexOf,
   initial,
-  inject: reduce$2,
+  inject: reduce$1,
   intersection,
   invert,
   invoke,
@@ -2285,7 +2286,7 @@ const allExports = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.definePr
   propertyOf,
   random,
   range: range$1,
-  reduce: reduce$2,
+  reduce: reduce$1,
   reduceRight,
   reject,
   rest,
@@ -2354,7 +2355,7 @@ const indexAll = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProp
   each: each$1,
   escape,
   every,
-  extend: extend$1,
+  extend,
   extendOwn,
   filter: filter$1,
   find: find$2,
@@ -2364,13 +2365,13 @@ const indexAll = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProp
   findWhere,
   first,
   flatten,
-  foldl: reduce$2,
+  foldl: reduce$1,
   foldr: reduceRight,
   forEach: each$1,
   functions,
   get: get$1,
   groupBy,
-  has: has$1,
+  has,
   head: first,
   identity: identity$2,
   include: contains,
@@ -2378,7 +2379,7 @@ const indexAll = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProp
   indexBy,
   indexOf,
   initial,
-  inject: reduce$2,
+  inject: reduce$1,
   intersection,
   invert,
   invoke,
@@ -2436,7 +2437,7 @@ const indexAll = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProp
   propertyOf,
   random,
   range: range$1,
-  reduce: reduce$2,
+  reduce: reduce$1,
   reduceRight,
   reject,
   rest,
@@ -5043,12 +5044,12 @@ function requireSynchronous_inspection() {
   };
   return synchronous_inspection;
 }
-var join$1;
+var join;
 var hasRequiredJoin;
 function requireJoin() {
-  if (hasRequiredJoin) return join$1;
+  if (hasRequiredJoin) return join;
   hasRequiredJoin = 1;
-  join$1 = function(Promise2, PromiseArray, tryConvertToPromise, INTERNAL, async2, getDomain) {
+  join = function(Promise2, PromiseArray, tryConvertToPromise, INTERNAL, async2, getDomain) {
     var util2 = requireUtil$2();
     var canEvaluate = util2.canEvaluate;
     var tryCatch = util2.tryCatch;
@@ -5156,7 +5157,7 @@ function requireJoin() {
       return fn !== void 0 ? ret.spread(fn) : ret;
     };
   };
-  return join$1;
+  return join;
 }
 var map;
 var hasRequiredMap;
@@ -6430,12 +6431,12 @@ function requireRace() {
   };
   return race;
 }
-var reduce$1;
+var reduce;
 var hasRequiredReduce;
 function requireReduce() {
-  if (hasRequiredReduce) return reduce$1;
+  if (hasRequiredReduce) return reduce;
   hasRequiredReduce = 1;
-  reduce$1 = function(Promise2, PromiseArray, apiRejection, tryConvertToPromise, INTERNAL, debug) {
+  reduce = function(Promise2, PromiseArray, apiRejection, tryConvertToPromise, INTERNAL, debug) {
     var getDomain = Promise2._getDomain;
     var util2 = requireUtil$2();
     var tryCatch = util2.tryCatch;
@@ -6585,7 +6586,7 @@ function requireReduce() {
       return ret;
     }
   };
-  return reduce$1;
+  return reduce;
 }
 var settle;
 var hasRequiredSettle;
@@ -10977,8 +10978,8 @@ GenericWorker$b.prototype = {
    * @param {Worker} next the worker receiving events from the current one.
    * @return {worker} the next worker for chainability
    */
-  pipe: function(next2) {
-    return next2.registerPrevious(this);
+  pipe: function(next) {
+    return next.registerPrevious(this);
   },
   /**
    * Same as `pipe` in the other direction.
@@ -13549,7 +13550,7 @@ function deflateSetDictionary(strm, dictionary) {
   var str, n;
   var wrap2;
   var avail;
-  var next2;
+  var next;
   var input;
   var tmpDict;
   if (!strm || !strm.state) {
@@ -13577,7 +13578,7 @@ function deflateSetDictionary(strm, dictionary) {
     dictLength = s.w_size;
   }
   avail = strm.avail_in;
-  next2 = strm.next_in;
+  next = strm.next_in;
   input = strm.input;
   strm.avail_in = dictLength;
   strm.next_in = 0;
@@ -13602,7 +13603,7 @@ function deflateSetDictionary(strm, dictionary) {
   s.lookahead = 0;
   s.match_length = s.prev_length = MIN_MATCH - 1;
   s.match_available = 0;
-  strm.next_in = next2;
+  strm.next_in = next;
   strm.input = input;
   strm.avail_in = avail;
   s.wrap = wrap2;
@@ -14305,7 +14306,7 @@ var inftrees = function inflate_table(type2, lens, lens_index, codes, table2, ta
   var fill;
   var low;
   var mask;
-  var next2;
+  var next;
   var base = null;
   var base_index = 0;
   var end;
@@ -14380,7 +14381,7 @@ var inftrees = function inflate_table(type2, lens, lens_index, codes, table2, ta
   huff = 0;
   sym = 0;
   len = min2;
-  next2 = table_index;
+  next = table_index;
   curr = root2;
   drop = 0;
   low = -1;
@@ -14406,7 +14407,7 @@ var inftrees = function inflate_table(type2, lens, lens_index, codes, table2, ta
     min2 = fill;
     do {
       fill -= incr;
-      table2[next2 + (huff >> drop) + fill] = here_bits << 24 | here_op << 16 | here_val | 0;
+      table2[next + (huff >> drop) + fill] = here_bits << 24 | here_op << 16 | here_val | 0;
     } while (fill !== 0);
     incr = 1 << len - 1;
     while (huff & incr) {
@@ -14429,7 +14430,7 @@ var inftrees = function inflate_table(type2, lens, lens_index, codes, table2, ta
       if (drop === 0) {
         drop = root2;
       }
-      next2 += min2;
+      next += min2;
       curr = len - drop;
       left = 1 << curr;
       while (curr + drop < max2) {
@@ -14445,11 +14446,11 @@ var inftrees = function inflate_table(type2, lens, lens_index, codes, table2, ta
         return 1;
       }
       low = huff & mask;
-      table2[low] = root2 << 24 | curr << 16 | next2 - table_index | 0;
+      table2[low] = root2 << 24 | curr << 16 | next - table_index | 0;
     }
   }
   if (huff !== 0) {
-    table2[next2 + huff] = len - drop << 24 | 64 << 16 | 0;
+    table2[next + huff] = len - drop << 24 | 64 << 16 | 0;
   }
   opts.bits = root2;
   return 0;
@@ -14700,7 +14701,7 @@ function updatewindow(strm, src, end, copy2) {
 function inflate$2(strm, flush) {
   var state2;
   var input, output;
-  var next2;
+  var next;
   var put;
   var have, left;
   var hold;
@@ -14731,7 +14732,7 @@ function inflate$2(strm, flush) {
   put = strm.next_out;
   output = strm.output;
   left = strm.avail_out;
-  next2 = strm.next_in;
+  next = strm.next_in;
   input = strm.input;
   have = strm.avail_in;
   hold = state2.hold;
@@ -14752,7 +14753,7 @@ function inflate$2(strm, flush) {
               break inf_leave;
             }
             have--;
-            hold += input[next2++] << bits;
+            hold += input[next++] << bits;
             bits += 8;
           }
           if (state2.wrap & 2 && hold === 35615) {
@@ -14802,7 +14803,7 @@ function inflate$2(strm, flush) {
               break inf_leave;
             }
             have--;
-            hold += input[next2++] << bits;
+            hold += input[next++] << bits;
             bits += 8;
           }
           state2.flags = hold;
@@ -14833,7 +14834,7 @@ function inflate$2(strm, flush) {
               break inf_leave;
             }
             have--;
-            hold += input[next2++] << bits;
+            hold += input[next++] << bits;
             bits += 8;
           }
           if (state2.head) {
@@ -14855,7 +14856,7 @@ function inflate$2(strm, flush) {
               break inf_leave;
             }
             have--;
-            hold += input[next2++] << bits;
+            hold += input[next++] << bits;
             bits += 8;
           }
           if (state2.head) {
@@ -14877,7 +14878,7 @@ function inflate$2(strm, flush) {
                 break inf_leave;
               }
               have--;
-              hold += input[next2++] << bits;
+              hold += input[next++] << bits;
               bits += 8;
             }
             state2.length = hold;
@@ -14910,7 +14911,7 @@ function inflate$2(strm, flush) {
                 utils$g.arraySet(
                   state2.head.extra,
                   input,
-                  next2,
+                  next,
                   // extra field is limited to 65536 bytes
                   // - no need for additional size check
                   copy2,
@@ -14919,10 +14920,10 @@ function inflate$2(strm, flush) {
                 );
               }
               if (state2.flags & 512) {
-                state2.check = crc32$1(state2.check, input, copy2, next2);
+                state2.check = crc32$1(state2.check, input, copy2, next);
               }
               have -= copy2;
-              next2 += copy2;
+              next += copy2;
               state2.length -= copy2;
             }
             if (state2.length) {
@@ -14938,16 +14939,16 @@ function inflate$2(strm, flush) {
             }
             copy2 = 0;
             do {
-              len = input[next2 + copy2++];
+              len = input[next + copy2++];
               if (state2.head && len && state2.length < 65536) {
                 state2.head.name += String.fromCharCode(len);
               }
             } while (len && copy2 < have);
             if (state2.flags & 512) {
-              state2.check = crc32$1(state2.check, input, copy2, next2);
+              state2.check = crc32$1(state2.check, input, copy2, next);
             }
             have -= copy2;
-            next2 += copy2;
+            next += copy2;
             if (len) {
               break inf_leave;
             }
@@ -14963,16 +14964,16 @@ function inflate$2(strm, flush) {
             }
             copy2 = 0;
             do {
-              len = input[next2 + copy2++];
+              len = input[next + copy2++];
               if (state2.head && len && state2.length < 65536) {
                 state2.head.comment += String.fromCharCode(len);
               }
             } while (len && copy2 < have);
             if (state2.flags & 512) {
-              state2.check = crc32$1(state2.check, input, copy2, next2);
+              state2.check = crc32$1(state2.check, input, copy2, next);
             }
             have -= copy2;
-            next2 += copy2;
+            next += copy2;
             if (len) {
               break inf_leave;
             }
@@ -14987,7 +14988,7 @@ function inflate$2(strm, flush) {
                 break inf_leave;
               }
               have--;
-              hold += input[next2++] << bits;
+              hold += input[next++] << bits;
               bits += 8;
             }
             if (hold !== (state2.check & 65535)) {
@@ -15011,7 +15012,7 @@ function inflate$2(strm, flush) {
               break inf_leave;
             }
             have--;
-            hold += input[next2++] << bits;
+            hold += input[next++] << bits;
             bits += 8;
           }
           strm.adler = state2.check = zswap32(hold);
@@ -15022,7 +15023,7 @@ function inflate$2(strm, flush) {
           if (state2.havedict === 0) {
             strm.next_out = put;
             strm.avail_out = left;
-            strm.next_in = next2;
+            strm.next_in = next;
             strm.avail_in = have;
             state2.hold = hold;
             state2.bits = bits;
@@ -15046,7 +15047,7 @@ function inflate$2(strm, flush) {
               break inf_leave;
             }
             have--;
-            hold += input[next2++] << bits;
+            hold += input[next++] << bits;
             bits += 8;
           }
           state2.last = hold & 1;
@@ -15083,7 +15084,7 @@ function inflate$2(strm, flush) {
               break inf_leave;
             }
             have--;
-            hold += input[next2++] << bits;
+            hold += input[next++] << bits;
             bits += 8;
           }
           if ((hold & 65535) !== (hold >>> 16 ^ 65535)) {
@@ -15112,9 +15113,9 @@ function inflate$2(strm, flush) {
             if (copy2 === 0) {
               break inf_leave;
             }
-            utils$g.arraySet(output, input, next2, copy2, put);
+            utils$g.arraySet(output, input, next, copy2, put);
             have -= copy2;
-            next2 += copy2;
+            next += copy2;
             left -= copy2;
             put += copy2;
             state2.length -= copy2;
@@ -15128,7 +15129,7 @@ function inflate$2(strm, flush) {
               break inf_leave;
             }
             have--;
-            hold += input[next2++] << bits;
+            hold += input[next++] << bits;
             bits += 8;
           }
           state2.nlen = (hold & 31) + 257;
@@ -15154,7 +15155,7 @@ function inflate$2(strm, flush) {
                 break inf_leave;
               }
               have--;
-              hold += input[next2++] << bits;
+              hold += input[next++] << bits;
               bits += 8;
             }
             state2.lens[order[state2.have++]] = hold & 7;
@@ -15190,7 +15191,7 @@ function inflate$2(strm, flush) {
                 break inf_leave;
               }
               have--;
-              hold += input[next2++] << bits;
+              hold += input[next++] << bits;
               bits += 8;
             }
             if (here_val < 16) {
@@ -15205,7 +15206,7 @@ function inflate$2(strm, flush) {
                     break inf_leave;
                   }
                   have--;
-                  hold += input[next2++] << bits;
+                  hold += input[next++] << bits;
                   bits += 8;
                 }
                 hold >>>= here_bits;
@@ -15226,7 +15227,7 @@ function inflate$2(strm, flush) {
                     break inf_leave;
                   }
                   have--;
-                  hold += input[next2++] << bits;
+                  hold += input[next++] << bits;
                   bits += 8;
                 }
                 hold >>>= here_bits;
@@ -15242,7 +15243,7 @@ function inflate$2(strm, flush) {
                     break inf_leave;
                   }
                   have--;
-                  hold += input[next2++] << bits;
+                  hold += input[next++] << bits;
                   bits += 8;
                 }
                 hold >>>= here_bits;
@@ -15299,7 +15300,7 @@ function inflate$2(strm, flush) {
           if (have >= 6 && left >= 258) {
             strm.next_out = put;
             strm.avail_out = left;
-            strm.next_in = next2;
+            strm.next_in = next;
             strm.avail_in = have;
             state2.hold = hold;
             state2.bits = bits;
@@ -15307,7 +15308,7 @@ function inflate$2(strm, flush) {
             put = strm.next_out;
             output = strm.output;
             left = strm.avail_out;
-            next2 = strm.next_in;
+            next = strm.next_in;
             input = strm.input;
             have = strm.avail_in;
             hold = state2.hold;
@@ -15330,7 +15331,7 @@ function inflate$2(strm, flush) {
               break inf_leave;
             }
             have--;
-            hold += input[next2++] << bits;
+            hold += input[next++] << bits;
             bits += 8;
           }
           if (here_op && (here_op & 240) === 0) {
@@ -15349,7 +15350,7 @@ function inflate$2(strm, flush) {
                 break inf_leave;
               }
               have--;
-              hold += input[next2++] << bits;
+              hold += input[next++] << bits;
               bits += 8;
             }
             hold >>>= last_bits;
@@ -15384,7 +15385,7 @@ function inflate$2(strm, flush) {
                 break inf_leave;
               }
               have--;
-              hold += input[next2++] << bits;
+              hold += input[next++] << bits;
               bits += 8;
             }
             state2.length += hold & (1 << state2.extra) - 1;
@@ -15407,7 +15408,7 @@ function inflate$2(strm, flush) {
               break inf_leave;
             }
             have--;
-            hold += input[next2++] << bits;
+            hold += input[next++] << bits;
             bits += 8;
           }
           if ((here_op & 240) === 0) {
@@ -15426,7 +15427,7 @@ function inflate$2(strm, flush) {
                 break inf_leave;
               }
               have--;
-              hold += input[next2++] << bits;
+              hold += input[next++] << bits;
               bits += 8;
             }
             hold >>>= last_bits;
@@ -15452,7 +15453,7 @@ function inflate$2(strm, flush) {
                 break inf_leave;
               }
               have--;
-              hold += input[next2++] << bits;
+              hold += input[next++] << bits;
               bits += 8;
             }
             state2.offset += hold & (1 << state2.extra) - 1;
@@ -15522,7 +15523,7 @@ function inflate$2(strm, flush) {
                 break inf_leave;
               }
               have--;
-              hold |= input[next2++] << bits;
+              hold |= input[next++] << bits;
               bits += 8;
             }
             _out -= left;
@@ -15549,7 +15550,7 @@ function inflate$2(strm, flush) {
                 break inf_leave;
               }
               have--;
-              hold += input[next2++] << bits;
+              hold += input[next++] << bits;
               bits += 8;
             }
             if (hold !== (state2.total & 4294967295)) {
@@ -15576,7 +15577,7 @@ function inflate$2(strm, flush) {
     }
   strm.next_out = put;
   strm.avail_out = left;
-  strm.next_in = next2;
+  strm.next_in = next;
   strm.avail_in = have;
   state2.hold = hold;
   state2.bits = bits;
@@ -17923,9 +17924,9 @@ DOMImplementation$1.prototype = {
     return node2;
   }
 };
-function Node$2() {
+function Node$1() {
 }
-Node$2.prototype = {
+Node$1.prototype = {
   firstChild: null,
   lastChild: null,
   previousSibling: null,
@@ -17964,13 +17965,13 @@ Node$2.prototype = {
   normalize: function() {
     var child = this.firstChild;
     while (child) {
-      var next2 = child.nextSibling;
-      if (next2 && next2.nodeType == TEXT_NODE && child.nodeType == TEXT_NODE) {
-        this.removeChild(next2);
-        child.appendData(next2.data);
+      var next = child.nextSibling;
+      if (next && next.nodeType == TEXT_NODE && child.nodeType == TEXT_NODE) {
+        this.removeChild(next);
+        child.appendData(next.data);
       } else {
         child.normalize();
-        child = next2;
+        child = next;
       }
     }
   },
@@ -18034,8 +18035,8 @@ Node$2.prototype = {
 function _xmlEncoder(c2) {
   return c2 == "<" && "&lt;" || c2 == ">" && "&gt;" || c2 == "&" && "&amp;" || c2 == '"' && "&quot;" || "&#" + c2.charCodeAt() + ";";
 }
-copy(NodeType, Node$2);
-copy(NodeType, Node$2.prototype);
+copy(NodeType, Node$1);
+copy(NodeType, Node$1.prototype);
 function _visitNode(node2, callback) {
   if (callback(node2)) {
     return true;
@@ -18058,7 +18059,7 @@ function _onAddAttribute(doc, el, newAttr) {
     el._nsMap[newAttr.prefix ? newAttr.localName : ""] = newAttr.value;
   }
 }
-function _onRemoveAttribute(doc, el, newAttr, remove2) {
+function _onRemoveAttribute(doc, el, newAttr, remove) {
   doc && doc._inc++;
   var ns = newAttr.namespaceURI;
   if (ns === NAMESPACE$2.XMLNS) {
@@ -18085,14 +18086,14 @@ function _onUpdateChild(doc, el, newChild) {
 }
 function _removeChild(parentNode, child) {
   var previous = child.previousSibling;
-  var next2 = child.nextSibling;
+  var next = child.nextSibling;
   if (previous) {
-    previous.nextSibling = next2;
+    previous.nextSibling = next;
   } else {
-    parentNode.firstChild = next2;
+    parentNode.firstChild = next;
   }
-  if (next2) {
-    next2.previousSibling = previous;
+  if (next) {
+    next.previousSibling = previous;
   } else {
     parentNode.lastChild = previous;
   }
@@ -18103,19 +18104,19 @@ function _removeChild(parentNode, child) {
   return child;
 }
 function hasValidParentNodeType(node2) {
-  return node2 && (node2.nodeType === Node$2.DOCUMENT_NODE || node2.nodeType === Node$2.DOCUMENT_FRAGMENT_NODE || node2.nodeType === Node$2.ELEMENT_NODE);
+  return node2 && (node2.nodeType === Node$1.DOCUMENT_NODE || node2.nodeType === Node$1.DOCUMENT_FRAGMENT_NODE || node2.nodeType === Node$1.ELEMENT_NODE);
 }
 function hasInsertableNodeType(node2) {
-  return node2 && (isElementNode(node2) || isTextNode(node2) || isDocTypeNode(node2) || node2.nodeType === Node$2.DOCUMENT_FRAGMENT_NODE || node2.nodeType === Node$2.COMMENT_NODE || node2.nodeType === Node$2.PROCESSING_INSTRUCTION_NODE);
+  return node2 && (isElementNode(node2) || isTextNode(node2) || isDocTypeNode(node2) || node2.nodeType === Node$1.DOCUMENT_FRAGMENT_NODE || node2.nodeType === Node$1.COMMENT_NODE || node2.nodeType === Node$1.PROCESSING_INSTRUCTION_NODE);
 }
 function isDocTypeNode(node2) {
-  return node2 && node2.nodeType === Node$2.DOCUMENT_TYPE_NODE;
+  return node2 && node2.nodeType === Node$1.DOCUMENT_TYPE_NODE;
 }
 function isElementNode(node2) {
-  return node2 && node2.nodeType === Node$2.ELEMENT_NODE;
+  return node2 && node2.nodeType === Node$1.ELEMENT_NODE;
 }
 function isTextNode(node2) {
-  return node2 && node2.nodeType === Node$2.TEXT_NODE;
+  return node2 && node2.nodeType === Node$1.TEXT_NODE;
 }
 function isElementInsertionPossible(doc, child) {
   var parentChildNodes = doc.childNodes || [];
@@ -18149,7 +18150,7 @@ function assertPreInsertionValidity1to5(parent, node2, child) {
     // the sax parser currently adds top level text nodes, this will be fixed in 0.9.0
     // || (node.nodeType === Node.TEXT_NODE && parent.nodeType === Node.DOCUMENT_NODE)
     // or `node` is a doctype and `parent` is not a document, then throw a "HierarchyRequestError" DOMException.
-    isDocTypeNode(node2) && parent.nodeType !== Node$2.DOCUMENT_NODE
+    isDocTypeNode(node2) && parent.nodeType !== Node$1.DOCUMENT_NODE
   ) {
     throw new DOMException(
       HIERARCHY_REQUEST_ERR,
@@ -18160,7 +18161,7 @@ function assertPreInsertionValidity1to5(parent, node2, child) {
 function assertPreInsertionValidityInDocument(parent, node2, child) {
   var parentChildNodes = parent.childNodes || [];
   var nodeChildNodes = node2.childNodes || [];
-  if (node2.nodeType === Node$2.DOCUMENT_FRAGMENT_NODE) {
+  if (node2.nodeType === Node$1.DOCUMENT_FRAGMENT_NODE) {
     var nodeChildElements = nodeChildNodes.filter(isElementNode);
     if (nodeChildElements.length > 1 || find(nodeChildNodes, isTextNode)) {
       throw new DOMException(HIERARCHY_REQUEST_ERR, "More than one element or text in fragment");
@@ -18190,7 +18191,7 @@ function assertPreInsertionValidityInDocument(parent, node2, child) {
 function assertPreReplacementValidityInDocument(parent, node2, child) {
   var parentChildNodes = parent.childNodes || [];
   var nodeChildNodes = node2.childNodes || [];
-  if (node2.nodeType === Node$2.DOCUMENT_FRAGMENT_NODE) {
+  if (node2.nodeType === Node$1.DOCUMENT_FRAGMENT_NODE) {
     var nodeChildElements = nodeChildNodes.filter(isElementNode);
     if (nodeChildElements.length > 1 || find(nodeChildNodes, isTextNode)) {
       throw new DOMException(HIERARCHY_REQUEST_ERR, "More than one element or text in fragment");
@@ -18219,7 +18220,7 @@ function assertPreReplacementValidityInDocument(parent, node2, child) {
 }
 function _insertBefore(parent, node2, child, _inDocumentAssertion) {
   assertPreInsertionValidity1to5(parent, node2, child);
-  if (parent.nodeType === Node$2.DOCUMENT_NODE) {
+  if (parent.nodeType === Node$1.DOCUMENT_NODE) {
     (_inDocumentAssertion || assertPreInsertionValidityInDocument)(parent, node2, child);
   }
   var cp = node2.parentNode;
@@ -18313,9 +18314,9 @@ Document$1.prototype = {
     if (newChild.nodeType == DOCUMENT_FRAGMENT_NODE) {
       var child = newChild.firstChild;
       while (child) {
-        var next2 = child.nextSibling;
+        var next = child.nextSibling;
         this.insertBefore(child, refChild);
-        child = next2;
+        child = next;
       }
       return newChild;
     }
@@ -18495,7 +18496,7 @@ Document$1.prototype = {
     return node2;
   }
 };
-_extends(Document$1, Node$2);
+_extends(Document$1, Node$1);
 function Element$1() {
   this._nsMap = {};
 }
@@ -18582,11 +18583,11 @@ Element$1.prototype = {
 };
 Document$1.prototype.getElementsByTagName = Element$1.prototype.getElementsByTagName;
 Document$1.prototype.getElementsByTagNameNS = Element$1.prototype.getElementsByTagNameNS;
-_extends(Element$1, Node$2);
+_extends(Element$1, Node$1);
 function Attr() {
 }
 Attr.prototype.nodeType = ATTRIBUTE_NODE;
-_extends(Attr, Node$2);
+_extends(Attr, Node$1);
 function CharacterData() {
 }
 CharacterData.prototype = {
@@ -18616,7 +18617,7 @@ CharacterData.prototype = {
     this.length = text.length;
   }
 };
-_extends(CharacterData, Node$2);
+_extends(CharacterData, Node$1);
 function Text$1() {
 }
 Text$1.prototype = {
@@ -18653,34 +18654,34 @@ _extends(CDATASection, CharacterData);
 function DocumentType() {
 }
 DocumentType.prototype.nodeType = DOCUMENT_TYPE_NODE;
-_extends(DocumentType, Node$2);
+_extends(DocumentType, Node$1);
 function Notation() {
 }
 Notation.prototype.nodeType = NOTATION_NODE;
-_extends(Notation, Node$2);
+_extends(Notation, Node$1);
 function Entity() {
 }
 Entity.prototype.nodeType = ENTITY_NODE;
-_extends(Entity, Node$2);
+_extends(Entity, Node$1);
 function EntityReference() {
 }
 EntityReference.prototype.nodeType = ENTITY_REFERENCE_NODE;
-_extends(EntityReference, Node$2);
+_extends(EntityReference, Node$1);
 function DocumentFragment() {
 }
 DocumentFragment.prototype.nodeName = "#document-fragment";
 DocumentFragment.prototype.nodeType = DOCUMENT_FRAGMENT_NODE;
-_extends(DocumentFragment, Node$2);
+_extends(DocumentFragment, Node$1);
 function ProcessingInstruction() {
 }
 ProcessingInstruction.prototype.nodeType = PROCESSING_INSTRUCTION_NODE;
-_extends(ProcessingInstruction, Node$2);
+_extends(ProcessingInstruction, Node$1);
 function XMLSerializer() {
 }
 XMLSerializer.prototype.serializeToString = function(node2, isHtml, nodeFilter) {
   return nodeSerializeToString.call(node2, isHtml, nodeFilter);
 };
-Node$2.prototype.toString = nodeSerializeToString;
+Node$1.prototype.toString = nodeSerializeToString;
 function nodeSerializeToString(isHtml, nodeFilter) {
   var buf = [];
   var refNode = this.nodeType == 9 && this.documentElement || this;
@@ -18956,7 +18957,7 @@ try {
         return this.$$length;
       }
     });
-    Object.defineProperty(Node$2.prototype, "textContent", {
+    Object.defineProperty(Node$1.prototype, "textContent", {
       get: function() {
         return getTextContent(this);
       },
@@ -18988,7 +18989,7 @@ dom$3.DocumentType = DocumentType;
 dom$3.DOMException = DOMException;
 dom$3.DOMImplementation = DOMImplementation$1;
 dom$3.Element = Element$1;
-dom$3.Node = Node$2;
+dom$3.Node = Node$1;
 dom$3.NodeList = NodeList;
 dom$3.XMLSerializer = XMLSerializer;
 var domParser = {};
@@ -21591,8 +21592,8 @@ function _copy(source, target) {
   }
 }
 function parseDCC(source, start, domBuilder, errorHandler) {
-  var next2 = source.charAt(start + 2);
-  switch (next2) {
+  var next = source.charAt(start + 2);
+  switch (next) {
     case "-":
       if (source.charAt(start + 3) === "-") {
         var end = source.indexOf("-->", start + 4);
@@ -21945,7 +21946,7 @@ var xmldom = xmldom$2;
 var nodes$1 = nodes$2;
 var Element = nodes$1.Element;
 reader.readString = readString;
-var Node$1 = xmldom.Node;
+var Node = xmldom.Node;
 function readString(xmlString, namespaceMap) {
   namespaceMap = namespaceMap || {};
   try {
@@ -21958,9 +21959,9 @@ function readString(xmlString, namespaceMap) {
   }
   function convertNode(node2) {
     switch (node2.nodeType) {
-      case Node$1.ELEMENT_NODE:
+      case Node.ELEMENT_NODE:
         return convertElement(node2);
-      case Node$1.TEXT_NODE:
+      case Node.TEXT_NODE:
         return nodes$1.text(node2.nodeValue);
     }
   }
@@ -26269,7 +26270,7 @@ function BodyReader(options) {
   function readBlip(element2, blip) {
     var propertiesElement = element2.firstOrEmpty("wp:docPr");
     var properties = propertiesElement.attributes;
-    var altText = isBlank2(properties.descr) ? properties.title : properties.descr;
+    var altText = isBlank(properties.descr) ? properties.title : properties.descr;
     var blipImageFile = findBlipImageFile(blip);
     if (blipImageFile === null) {
       return emptyResultWithMessages([warning("Could not find image file for a:blip element")]);
@@ -26285,7 +26286,7 @@ function BodyReader(options) {
       }
     });
   }
-  function isBlank2(value) {
+  function isBlank(value) {
     return value == null || /^\s*$/.test(value);
   }
   function findBlipImageFile(blip) {
@@ -28105,7 +28106,7 @@ parser.Parser = function(options) {
     parseTokens
   };
 };
-var rules$1 = {};
+var rules = {};
 var option = {};
 (function(exports$1) {
   exports$1.none = /* @__PURE__ */ Object.create({
@@ -28329,7 +28330,7 @@ LazyIterator.prototype.filter = function(condition) {
   var iterator = this._iterator;
   var moved = false;
   var hasNext = false;
-  var next2;
+  var next;
   var moveIfNecessary = function() {
     if (moved) {
       return;
@@ -28337,8 +28338,8 @@ LazyIterator.prototype.filter = function(condition) {
     moved = true;
     hasNext = false;
     while (iterator.hasNext() && !hasNext) {
-      next2 = iterator.next();
-      hasNext = condition(next2);
+      next = iterator.next();
+      hasNext = condition(next);
     }
   };
   return new LazyIterator({
@@ -28348,7 +28349,7 @@ LazyIterator.prototype.filter = function(condition) {
     },
     next: function() {
       moveIfNecessary();
-      var toReturn = next2;
+      var toReturn = next;
       moved = false;
       return toReturn;
     }
@@ -28649,7 +28650,7 @@ LazyIterator.prototype.toArray = function() {
     }
     return results2.failure([error2], input);
   }
-})(rules$1);
+})(rules);
 var StringSource$1 = { exports: {} };
 StringSource$1.exports = function(string, description) {
   var self2 = {
@@ -28706,7 +28707,7 @@ var Token$1 = function(name, value, source) {
 };
 var bottomUp = {};
 (function(exports$1) {
-  var rules2 = rules$1;
+  var rules$1 = rules;
   var results2 = parsingResults;
   exports$1.parser = function(name, prefixRules, infixRuleBuilders) {
     var self2 = {
@@ -28715,7 +28716,7 @@ var bottomUp = {};
       rightAssociative
     };
     var infixRules = new InfixRules(infixRuleBuilders.map(createInfixRule));
-    var prefixRule = rules2.firstOf(name, prefixRules);
+    var prefixRule = rules$1.firstOf(name, prefixRules);
     function createInfixRule(infixRuleBuilder) {
       return {
         name: infixRuleBuilder.name,
@@ -28776,7 +28777,7 @@ var bottomUp = {};
       }
     }
     function applyToTokens(tokens) {
-      return rules2.firstOf("infix", infixRules.map(function(infix) {
+      return rules$1.firstOf("infix", infixRules.map(function(infix) {
         return infix.rule;
       }))(tokens);
     }
@@ -28877,7 +28878,7 @@ function RegexTokeniser$1(rules2) {
   };
 }
 lop$2.Parser = parser.Parser;
-lop$2.rules = rules$1;
+lop$2.rules = rules;
 lop$2.errors = errors;
 lop$2.results = parsingResults;
 lop$2.StringSource = StringSourceExports;
@@ -29527,723 +29528,6 @@ function embedStyleMap(input, styleMap2) {
 lib$7.styleMapping = function() {
   throw new Error(`Use a raw string instead of mammoth.styleMapping e.g. "p[style-name='Title'] => h1" instead of mammoth.styleMapping("p[style-name='Title'] => h1")`);
 };
-function extend(destination) {
-  for (var i = 1; i < arguments.length; i++) {
-    var source = arguments[i];
-    for (var key in source) {
-      if (source.hasOwnProperty(key)) destination[key] = source[key];
-    }
-  }
-  return destination;
-}
-function repeat(character, count) {
-  return Array(count + 1).join(character);
-}
-function trimLeadingNewlines(string) {
-  return string.replace(/^\n*/, "");
-}
-function trimTrailingNewlines(string) {
-  var indexEnd = string.length;
-  while (indexEnd > 0 && string[indexEnd - 1] === "\n") indexEnd--;
-  return string.substring(0, indexEnd);
-}
-function trimNewlines(string) {
-  return trimTrailingNewlines(trimLeadingNewlines(string));
-}
-var blockElements = [
-  "ADDRESS",
-  "ARTICLE",
-  "ASIDE",
-  "AUDIO",
-  "BLOCKQUOTE",
-  "BODY",
-  "CANVAS",
-  "CENTER",
-  "DD",
-  "DIR",
-  "DIV",
-  "DL",
-  "DT",
-  "FIELDSET",
-  "FIGCAPTION",
-  "FIGURE",
-  "FOOTER",
-  "FORM",
-  "FRAMESET",
-  "H1",
-  "H2",
-  "H3",
-  "H4",
-  "H5",
-  "H6",
-  "HEADER",
-  "HGROUP",
-  "HR",
-  "HTML",
-  "ISINDEX",
-  "LI",
-  "MAIN",
-  "MENU",
-  "NAV",
-  "NOFRAMES",
-  "NOSCRIPT",
-  "OL",
-  "OUTPUT",
-  "P",
-  "PRE",
-  "SECTION",
-  "TABLE",
-  "TBODY",
-  "TD",
-  "TFOOT",
-  "TH",
-  "THEAD",
-  "TR",
-  "UL"
-];
-function isBlock(node2) {
-  return is(node2, blockElements);
-}
-var voidElements = [
-  "AREA",
-  "BASE",
-  "BR",
-  "COL",
-  "COMMAND",
-  "EMBED",
-  "HR",
-  "IMG",
-  "INPUT",
-  "KEYGEN",
-  "LINK",
-  "META",
-  "PARAM",
-  "SOURCE",
-  "TRACK",
-  "WBR"
-];
-function isVoid(node2) {
-  return is(node2, voidElements);
-}
-function hasVoid(node2) {
-  return has(node2, voidElements);
-}
-var meaningfulWhenBlankElements = [
-  "A",
-  "TABLE",
-  "THEAD",
-  "TBODY",
-  "TFOOT",
-  "TH",
-  "TD",
-  "IFRAME",
-  "SCRIPT",
-  "AUDIO",
-  "VIDEO"
-];
-function isMeaningfulWhenBlank(node2) {
-  return is(node2, meaningfulWhenBlankElements);
-}
-function hasMeaningfulWhenBlank(node2) {
-  return has(node2, meaningfulWhenBlankElements);
-}
-function is(node2, tagNames) {
-  return tagNames.indexOf(node2.nodeName) >= 0;
-}
-function has(node2, tagNames) {
-  return node2.getElementsByTagName && tagNames.some(function(tagName) {
-    return node2.getElementsByTagName(tagName).length;
-  });
-}
-var rules = {};
-rules.paragraph = {
-  filter: "p",
-  replacement: function(content) {
-    return "\n\n" + content + "\n\n";
-  }
-};
-rules.lineBreak = {
-  filter: "br",
-  replacement: function(content, node2, options) {
-    return options.br + "\n";
-  }
-};
-rules.heading = {
-  filter: ["h1", "h2", "h3", "h4", "h5", "h6"],
-  replacement: function(content, node2, options) {
-    var hLevel = Number(node2.nodeName.charAt(1));
-    if (options.headingStyle === "setext" && hLevel < 3) {
-      var underline2 = repeat(hLevel === 1 ? "=" : "-", content.length);
-      return "\n\n" + content + "\n" + underline2 + "\n\n";
-    } else {
-      return "\n\n" + repeat("#", hLevel) + " " + content + "\n\n";
-    }
-  }
-};
-rules.blockquote = {
-  filter: "blockquote",
-  replacement: function(content) {
-    content = trimNewlines(content).replace(/^/gm, "> ");
-    return "\n\n" + content + "\n\n";
-  }
-};
-rules.list = {
-  filter: ["ul", "ol"],
-  replacement: function(content, node2) {
-    var parent = node2.parentNode;
-    if (parent.nodeName === "LI" && parent.lastElementChild === node2) {
-      return "\n" + content;
-    } else {
-      return "\n\n" + content + "\n\n";
-    }
-  }
-};
-rules.listItem = {
-  filter: "li",
-  replacement: function(content, node2, options) {
-    var prefix = options.bulletListMarker + "   ";
-    var parent = node2.parentNode;
-    if (parent.nodeName === "OL") {
-      var start = parent.getAttribute("start");
-      var index2 = Array.prototype.indexOf.call(parent.children, node2);
-      prefix = (start ? Number(start) + index2 : index2 + 1) + ".  ";
-    }
-    var isParagraph = /\n$/.test(content);
-    content = trimNewlines(content) + (isParagraph ? "\n" : "");
-    content = content.replace(/\n/gm, "\n" + " ".repeat(prefix.length));
-    return prefix + content + (node2.nextSibling ? "\n" : "");
-  }
-};
-rules.indentedCodeBlock = {
-  filter: function(node2, options) {
-    return options.codeBlockStyle === "indented" && node2.nodeName === "PRE" && node2.firstChild && node2.firstChild.nodeName === "CODE";
-  },
-  replacement: function(content, node2, options) {
-    return "\n\n    " + node2.firstChild.textContent.replace(/\n/g, "\n    ") + "\n\n";
-  }
-};
-rules.fencedCodeBlock = {
-  filter: function(node2, options) {
-    return options.codeBlockStyle === "fenced" && node2.nodeName === "PRE" && node2.firstChild && node2.firstChild.nodeName === "CODE";
-  },
-  replacement: function(content, node2, options) {
-    var className = node2.firstChild.getAttribute("class") || "";
-    var language = (className.match(/language-(\S+)/) || [null, ""])[1];
-    var code2 = node2.firstChild.textContent;
-    var fenceChar = options.fence.charAt(0);
-    var fenceSize = 3;
-    var fenceInCodeRegex = new RegExp("^" + fenceChar + "{3,}", "gm");
-    var match;
-    while (match = fenceInCodeRegex.exec(code2)) {
-      if (match[0].length >= fenceSize) {
-        fenceSize = match[0].length + 1;
-      }
-    }
-    var fence = repeat(fenceChar, fenceSize);
-    return "\n\n" + fence + language + "\n" + code2.replace(/\n$/, "") + "\n" + fence + "\n\n";
-  }
-};
-rules.horizontalRule = {
-  filter: "hr",
-  replacement: function(content, node2, options) {
-    return "\n\n" + options.hr + "\n\n";
-  }
-};
-rules.inlineLink = {
-  filter: function(node2, options) {
-    return options.linkStyle === "inlined" && node2.nodeName === "A" && node2.getAttribute("href");
-  },
-  replacement: function(content, node2) {
-    var href = node2.getAttribute("href");
-    if (href) href = href.replace(/([()])/g, "\\$1");
-    var title = cleanAttribute(node2.getAttribute("title"));
-    if (title) title = ' "' + title.replace(/"/g, '\\"') + '"';
-    return "[" + content + "](" + href + title + ")";
-  }
-};
-rules.referenceLink = {
-  filter: function(node2, options) {
-    return options.linkStyle === "referenced" && node2.nodeName === "A" && node2.getAttribute("href");
-  },
-  replacement: function(content, node2, options) {
-    var href = node2.getAttribute("href");
-    var title = cleanAttribute(node2.getAttribute("title"));
-    if (title) title = ' "' + title + '"';
-    var replacement;
-    var reference;
-    switch (options.linkReferenceStyle) {
-      case "collapsed":
-        replacement = "[" + content + "][]";
-        reference = "[" + content + "]: " + href + title;
-        break;
-      case "shortcut":
-        replacement = "[" + content + "]";
-        reference = "[" + content + "]: " + href + title;
-        break;
-      default:
-        var id = this.references.length + 1;
-        replacement = "[" + content + "][" + id + "]";
-        reference = "[" + id + "]: " + href + title;
-    }
-    this.references.push(reference);
-    return replacement;
-  },
-  references: [],
-  append: function(options) {
-    var references = "";
-    if (this.references.length) {
-      references = "\n\n" + this.references.join("\n") + "\n\n";
-      this.references = [];
-    }
-    return references;
-  }
-};
-rules.emphasis = {
-  filter: ["em", "i"],
-  replacement: function(content, node2, options) {
-    if (!content.trim()) return "";
-    return options.emDelimiter + content + options.emDelimiter;
-  }
-};
-rules.strong = {
-  filter: ["strong", "b"],
-  replacement: function(content, node2, options) {
-    if (!content.trim()) return "";
-    return options.strongDelimiter + content + options.strongDelimiter;
-  }
-};
-rules.code = {
-  filter: function(node2) {
-    var hasSiblings = node2.previousSibling || node2.nextSibling;
-    var isCodeBlock = node2.parentNode.nodeName === "PRE" && !hasSiblings;
-    return node2.nodeName === "CODE" && !isCodeBlock;
-  },
-  replacement: function(content) {
-    if (!content) return "";
-    content = content.replace(/\r?\n|\r/g, " ");
-    var extraSpace = /^`|^ .*?[^ ].* $|`$/.test(content) ? " " : "";
-    var delimiter = "`";
-    var matches = content.match(/`+/gm) || [];
-    while (matches.indexOf(delimiter) !== -1) delimiter = delimiter + "`";
-    return delimiter + extraSpace + content + extraSpace + delimiter;
-  }
-};
-rules.image = {
-  filter: "img",
-  replacement: function(content, node2) {
-    var alt = cleanAttribute(node2.getAttribute("alt"));
-    var src = node2.getAttribute("src") || "";
-    var title = cleanAttribute(node2.getAttribute("title"));
-    var titlePart = title ? ' "' + title + '"' : "";
-    return src ? "![" + alt + "](" + src + titlePart + ")" : "";
-  }
-};
-function cleanAttribute(attribute) {
-  return attribute ? attribute.replace(/(\n+\s*)+/g, "\n") : "";
-}
-function Rules(options) {
-  this.options = options;
-  this._keep = [];
-  this._remove = [];
-  this.blankRule = {
-    replacement: options.blankReplacement
-  };
-  this.keepReplacement = options.keepReplacement;
-  this.defaultRule = {
-    replacement: options.defaultReplacement
-  };
-  this.array = [];
-  for (var key in options.rules) this.array.push(options.rules[key]);
-}
-Rules.prototype = {
-  add: function(key, rule) {
-    this.array.unshift(rule);
-  },
-  keep: function(filter2) {
-    this._keep.unshift({
-      filter: filter2,
-      replacement: this.keepReplacement
-    });
-  },
-  remove: function(filter2) {
-    this._remove.unshift({
-      filter: filter2,
-      replacement: function() {
-        return "";
-      }
-    });
-  },
-  forNode: function(node2) {
-    if (node2.isBlank) return this.blankRule;
-    var rule;
-    if (rule = findRule(this.array, node2, this.options)) return rule;
-    if (rule = findRule(this._keep, node2, this.options)) return rule;
-    if (rule = findRule(this._remove, node2, this.options)) return rule;
-    return this.defaultRule;
-  },
-  forEach: function(fn) {
-    for (var i = 0; i < this.array.length; i++) fn(this.array[i], i);
-  }
-};
-function findRule(rules2, node2, options) {
-  for (var i = 0; i < rules2.length; i++) {
-    var rule = rules2[i];
-    if (filterValue(rule, node2, options)) return rule;
-  }
-  return void 0;
-}
-function filterValue(rule, node2, options) {
-  var filter2 = rule.filter;
-  if (typeof filter2 === "string") {
-    if (filter2 === node2.nodeName.toLowerCase()) return true;
-  } else if (Array.isArray(filter2)) {
-    if (filter2.indexOf(node2.nodeName.toLowerCase()) > -1) return true;
-  } else if (typeof filter2 === "function") {
-    if (filter2.call(rule, node2, options)) return true;
-  } else {
-    throw new TypeError("`filter` needs to be a string, array, or function");
-  }
-}
-function collapseWhitespace(options) {
-  var element2 = options.element;
-  var isBlock2 = options.isBlock;
-  var isVoid2 = options.isVoid;
-  var isPre = options.isPre || function(node3) {
-    return node3.nodeName === "PRE";
-  };
-  if (!element2.firstChild || isPre(element2)) return;
-  var prevText = null;
-  var keepLeadingWs = false;
-  var prev = null;
-  var node2 = next(prev, element2, isPre);
-  while (node2 !== element2) {
-    if (node2.nodeType === 3 || node2.nodeType === 4) {
-      var text = node2.data.replace(/[ \r\n\t]+/g, " ");
-      if ((!prevText || / $/.test(prevText.data)) && !keepLeadingWs && text[0] === " ") {
-        text = text.substr(1);
-      }
-      if (!text) {
-        node2 = remove(node2);
-        continue;
-      }
-      node2.data = text;
-      prevText = node2;
-    } else if (node2.nodeType === 1) {
-      if (isBlock2(node2) || node2.nodeName === "BR") {
-        if (prevText) {
-          prevText.data = prevText.data.replace(/ $/, "");
-        }
-        prevText = null;
-        keepLeadingWs = false;
-      } else if (isVoid2(node2) || isPre(node2)) {
-        prevText = null;
-        keepLeadingWs = true;
-      } else if (prevText) {
-        keepLeadingWs = false;
-      }
-    } else {
-      node2 = remove(node2);
-      continue;
-    }
-    var nextNode = next(prev, node2, isPre);
-    prev = node2;
-    node2 = nextNode;
-  }
-  if (prevText) {
-    prevText.data = prevText.data.replace(/ $/, "");
-    if (!prevText.data) {
-      remove(prevText);
-    }
-  }
-}
-function remove(node2) {
-  var next2 = node2.nextSibling || node2.parentNode;
-  node2.parentNode.removeChild(node2);
-  return next2;
-}
-function next(prev, current, isPre) {
-  if (prev && prev.parentNode === current || isPre(current)) {
-    return current.nextSibling || current.parentNode;
-  }
-  return current.firstChild || current.nextSibling || current.parentNode;
-}
-var root = typeof window !== "undefined" ? window : {};
-function canParseHTMLNatively() {
-  var Parser = root.DOMParser;
-  var canParse = false;
-  try {
-    if (new Parser().parseFromString("", "text/html")) {
-      canParse = true;
-    }
-  } catch (e) {
-  }
-  return canParse;
-}
-function createHTMLParser() {
-  var Parser = function() {
-  };
-  {
-    var domino = require("@mixmark-io/domino");
-    Parser.prototype.parseFromString = function(string) {
-      return domino.createDocument(string);
-    };
-  }
-  return Parser;
-}
-var HTMLParser = canParseHTMLNatively() ? root.DOMParser : createHTMLParser();
-function RootNode(input, options) {
-  var root2;
-  if (typeof input === "string") {
-    var doc = htmlParser().parseFromString(
-      // DOM parsers arrange elements in the <head> and <body>.
-      // Wrapping in a custom element ensures elements are reliably arranged in
-      // a single element.
-      '<x-turndown id="turndown-root">' + input + "</x-turndown>",
-      "text/html"
-    );
-    root2 = doc.getElementById("turndown-root");
-  } else {
-    root2 = input.cloneNode(true);
-  }
-  collapseWhitespace({
-    element: root2,
-    isBlock,
-    isVoid,
-    isPre: options.preformattedCode ? isPreOrCode : null
-  });
-  return root2;
-}
-var _htmlParser;
-function htmlParser() {
-  _htmlParser = _htmlParser || new HTMLParser();
-  return _htmlParser;
-}
-function isPreOrCode(node2) {
-  return node2.nodeName === "PRE" || node2.nodeName === "CODE";
-}
-function Node(node2, options) {
-  node2.isBlock = isBlock(node2);
-  node2.isCode = node2.nodeName === "CODE" || node2.parentNode.isCode;
-  node2.isBlank = isBlank(node2);
-  node2.flankingWhitespace = flankingWhitespace(node2, options);
-  return node2;
-}
-function isBlank(node2) {
-  return !isVoid(node2) && !isMeaningfulWhenBlank(node2) && /^\s*$/i.test(node2.textContent) && !hasVoid(node2) && !hasMeaningfulWhenBlank(node2);
-}
-function flankingWhitespace(node2, options) {
-  if (node2.isBlock || options.preformattedCode && node2.isCode) {
-    return { leading: "", trailing: "" };
-  }
-  var edges = edgeWhitespace(node2.textContent);
-  if (edges.leadingAscii && isFlankedByWhitespace("left", node2, options)) {
-    edges.leading = edges.leadingNonAscii;
-  }
-  if (edges.trailingAscii && isFlankedByWhitespace("right", node2, options)) {
-    edges.trailing = edges.trailingNonAscii;
-  }
-  return { leading: edges.leading, trailing: edges.trailing };
-}
-function edgeWhitespace(string) {
-  var m2 = string.match(/^(([ \t\r\n]*)(\s*))(?:(?=\S)[\s\S]*\S)?((\s*?)([ \t\r\n]*))$/);
-  return {
-    leading: m2[1],
-    // whole string for whitespace-only strings
-    leadingAscii: m2[2],
-    leadingNonAscii: m2[3],
-    trailing: m2[4],
-    // empty for whitespace-only strings
-    trailingNonAscii: m2[5],
-    trailingAscii: m2[6]
-  };
-}
-function isFlankedByWhitespace(side, node2, options) {
-  var sibling;
-  var regExp;
-  var isFlanked;
-  if (side === "left") {
-    sibling = node2.previousSibling;
-    regExp = / $/;
-  } else {
-    sibling = node2.nextSibling;
-    regExp = /^ /;
-  }
-  if (sibling) {
-    if (sibling.nodeType === 3) {
-      isFlanked = regExp.test(sibling.nodeValue);
-    } else if (options.preformattedCode && sibling.nodeName === "CODE") {
-      isFlanked = false;
-    } else if (sibling.nodeType === 1 && !isBlock(sibling)) {
-      isFlanked = regExp.test(sibling.textContent);
-    }
-  }
-  return isFlanked;
-}
-var reduce = Array.prototype.reduce;
-var escapes = [
-  [/\\/g, "\\\\"],
-  [/\*/g, "\\*"],
-  [/^-/g, "\\-"],
-  [/^\+ /g, "\\+ "],
-  [/^(=+)/g, "\\$1"],
-  [/^(#{1,6}) /g, "\\$1 "],
-  [/`/g, "\\`"],
-  [/^~~~/g, "\\~~~"],
-  [/\[/g, "\\["],
-  [/\]/g, "\\]"],
-  [/^>/g, "\\>"],
-  [/_/g, "\\_"],
-  [/^(\d+)\. /g, "$1\\. "]
-];
-function TurndownService(options) {
-  if (!(this instanceof TurndownService)) return new TurndownService(options);
-  var defaults2 = {
-    rules,
-    headingStyle: "setext",
-    hr: "* * *",
-    bulletListMarker: "*",
-    codeBlockStyle: "indented",
-    fence: "```",
-    emDelimiter: "_",
-    strongDelimiter: "**",
-    linkStyle: "inlined",
-    linkReferenceStyle: "full",
-    br: "  ",
-    preformattedCode: false,
-    blankReplacement: function(content, node2) {
-      return node2.isBlock ? "\n\n" : "";
-    },
-    keepReplacement: function(content, node2) {
-      return node2.isBlock ? "\n\n" + node2.outerHTML + "\n\n" : node2.outerHTML;
-    },
-    defaultReplacement: function(content, node2) {
-      return node2.isBlock ? "\n\n" + content + "\n\n" : content;
-    }
-  };
-  this.options = extend({}, defaults2, options);
-  this.rules = new Rules(this.options);
-}
-TurndownService.prototype = {
-  /**
-   * The entry point for converting a string or DOM node to Markdown
-   * @public
-   * @param {String|HTMLElement} input The string or DOM node to convert
-   * @returns A Markdown representation of the input
-   * @type String
-   */
-  turndown: function(input) {
-    if (!canConvert(input)) {
-      throw new TypeError(
-        input + " is not a string, or an element/document/fragment node."
-      );
-    }
-    if (input === "") return "";
-    var output = process$2.call(this, new RootNode(input, this.options));
-    return postProcess.call(this, output);
-  },
-  /**
-   * Add one or more plugins
-   * @public
-   * @param {Function|Array} plugin The plugin or array of plugins to add
-   * @returns The Turndown instance for chaining
-   * @type Object
-   */
-  use: function(plugin) {
-    if (Array.isArray(plugin)) {
-      for (var i = 0; i < plugin.length; i++) this.use(plugin[i]);
-    } else if (typeof plugin === "function") {
-      plugin(this);
-    } else {
-      throw new TypeError("plugin must be a Function or an Array of Functions");
-    }
-    return this;
-  },
-  /**
-   * Adds a rule
-   * @public
-   * @param {String} key The unique key of the rule
-   * @param {Object} rule The rule
-   * @returns The Turndown instance for chaining
-   * @type Object
-   */
-  addRule: function(key, rule) {
-    this.rules.add(key, rule);
-    return this;
-  },
-  /**
-   * Keep a node (as HTML) that matches the filter
-   * @public
-   * @param {String|Array|Function} filter The unique key of the rule
-   * @returns The Turndown instance for chaining
-   * @type Object
-   */
-  keep: function(filter2) {
-    this.rules.keep(filter2);
-    return this;
-  },
-  /**
-   * Remove a node that matches the filter
-   * @public
-   * @param {String|Array|Function} filter The unique key of the rule
-   * @returns The Turndown instance for chaining
-   * @type Object
-   */
-  remove: function(filter2) {
-    this.rules.remove(filter2);
-    return this;
-  },
-  /**
-   * Escapes Markdown syntax
-   * @public
-   * @param {String} string The string to escape
-   * @returns A string with Markdown syntax escaped
-   * @type String
-   */
-  escape: function(string) {
-    return escapes.reduce(function(accumulator, escape2) {
-      return accumulator.replace(escape2[0], escape2[1]);
-    }, string);
-  }
-};
-function process$2(parentNode) {
-  var self2 = this;
-  return reduce.call(parentNode.childNodes, function(output, node2) {
-    node2 = new Node(node2, self2.options);
-    var replacement = "";
-    if (node2.nodeType === 3) {
-      replacement = node2.isCode ? node2.nodeValue : self2.escape(node2.nodeValue);
-    } else if (node2.nodeType === 1) {
-      replacement = replacementForNode.call(self2, node2);
-    }
-    return join(output, replacement);
-  }, "");
-}
-function postProcess(output) {
-  var self2 = this;
-  this.rules.forEach(function(rule) {
-    if (typeof rule.append === "function") {
-      output = join(output, rule.append(self2.options));
-    }
-  });
-  return output.replace(/^[\t\r\n]+/, "").replace(/[\t\r\n\s]+$/, "");
-}
-function replacementForNode(node2) {
-  var rule = this.rules.forNode(node2);
-  var content = process$2.call(this, node2);
-  var whitespace = node2.flankingWhitespace;
-  if (whitespace.leading || whitespace.trailing) content = content.trim();
-  return whitespace.leading + rule.replacement(content, node2, this.options) + whitespace.trailing;
-}
-function join(output, replacement) {
-  var s1 = trimTrailingNewlines(output);
-  var s2 = trimLeadingNewlines(replacement);
-  var nls = Math.max(output.length - s1.length, replacement.length - s2.length);
-  var separator = "\n\n".substring(0, nls);
-  return s1 + separator + s2;
-}
-function canConvert(input) {
-  return input != null && (typeof input === "string" || input.nodeType && (input.nodeType === 1 || input.nodeType === 9 || input.nodeType === 11));
-}
 class WordToMdConverter {
   constructor() {
     __publicField(this, "direction", "docx-to-md");
@@ -36459,7 +35743,7 @@ function requireAsync_iterator() {
     get stream() {
       return this[kStream];
     },
-    next: function next2() {
+    next: function next() {
       var _this = this;
       var error2 = this[kError];
       if (error2 !== null) {
