@@ -9,6 +9,7 @@ import { registerSystemHandlers } from './ipc/system.handler'
 import { registerConfigHandlers } from './core/config'
 import { registerClickerHandlers, registerClickerHotkeys, cleanupClickerHandlers } from './ipc/clicker.handler'
 import { registerDocConvertHandlers, cleanupDocConvertHandlers } from './ipc/docConvert.handler'
+import { registerWatermarkHandlers } from './ipc/watermark.handler'
 
 const require = createRequire(import.meta.url)
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -75,6 +76,22 @@ ipcMain.handle('file:readText', async (_event, filePath: string) => {
   return fs.readFileSync(filePath, 'utf-8')
 })
 
+// 读取图片为 base64 data URL（用于渲染进程加载本地图片到 Canvas）
+ipcMain.handle('file:readImageBase64', async (_event, filePath: string) => {
+  const fs = await import('node:fs')
+  const nodePath = await import('node:path')
+  const buffer = fs.readFileSync(filePath)
+  const ext = nodePath.extname(filePath).toLowerCase().replace('.', '')
+  const mimeMap: Record<string, string> = {
+    jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
+    webp: 'image/webp', avif: 'image/avif', tiff: 'image/tiff',
+    tif: 'image/tiff', gif: 'image/gif', svg: 'image/svg+xml',
+    bmp: 'image/bmp', ico: 'image/x-icon',
+  }
+  const mime = mimeMap[ext] || 'application/octet-stream'
+  return `data:${mime};base64,${buffer.toString('base64')}`
+})
+
 
 // 递归列出文件夹中的图片文件
 const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.avif', '.tiff', '.tif', '.bmp', '.ico', '.svg']
@@ -114,6 +131,7 @@ registerSystemHandlers()
 registerConfigHandlers()
 registerClickerHandlers()
 registerDocConvertHandlers()
+registerWatermarkHandlers()
 
 // ====== App lifecycle ======
 app.on('window-all-closed', () => {

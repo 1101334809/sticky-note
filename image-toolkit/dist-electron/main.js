@@ -50392,12 +50392,12 @@ function convertTable(table2) {
   }
   return "\n" + lines.join("\n") + "\n";
 }
-let engine = null;
+let engine$1 = null;
 let queue = null;
 function registerDocConvertHandlers() {
-  engine = new ConvertEngine();
-  queue = new ConvertQueue(engine);
-  engine.registerAll([
+  engine$1 = new ConvertEngine();
+  queue = new ConvertQueue(engine$1);
+  engine$1.registerAll([
     new WordToMdConverter(),
     new WordToPdfConverter(),
     new WordToHtmlConverter(),
@@ -50411,7 +50411,7 @@ function registerDocConvertHandlers() {
     new HtmlToMdConverter()
   ]);
   electron.ipcMain.handle("docConvert:start", async (_event, data) => {
-    if (!queue || !engine) return { success: false, error: "引擎未初始化" };
+    if (!queue || !engine$1) return { success: false, error: "引擎未初始化" };
     console.log("[docConvert] 开始转换, 文件数:", data.files.length, "方向:", data.config.direction);
     try {
       const tasks = queue.addTasks(data.files, data.config);
@@ -50473,8 +50473,305 @@ function registerDocConvertHandlers() {
 function cleanupDocConvertHandlers() {
   queue == null ? void 0 : queue.cancel();
   queue == null ? void 0 : queue.removeAllListeners();
-  engine = null;
+  engine$1 = null;
   queue = null;
+}
+const POSITION_TO_GRAVITY = {
+  "top-left": "northwest",
+  "top-center": "north",
+  "top-right": "northeast",
+  "center-left": "west",
+  "center": "centre",
+  "center-right": "east",
+  "bottom-left": "southwest",
+  "bottom-center": "south",
+  "bottom-right": "southeast",
+  "custom": "centre"
+};
+class TextRenderer {
+  /**
+   * 将文字渲染为 SVG Buffer
+   */
+  static render(options) {
+    const { text, fontSize, color, rotation, opacity } = options;
+    const charWidth = this.estimateCharWidth(text, fontSize);
+    const textWidth = charWidth;
+    const textHeight = fontSize * 1.4;
+    const { boxWidth, boxHeight } = this.calcRotatedBBox(
+      textWidth,
+      textHeight,
+      rotation
+    );
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${boxWidth}" height="${boxHeight}">
+  <text
+    x="50%" y="50%"
+    text-anchor="middle"
+    dominant-baseline="central"
+    font-size="${fontSize}px"
+    font-family="Microsoft YaHei, PingFang SC, sans-serif"
+    fill="${color}"
+    opacity="${opacity}"
+    transform="rotate(${rotation}, ${boxWidth / 2}, ${boxHeight / 2})"
+  >${this.escapeXml(text)}</text>
+</svg>`;
+    return Buffer.from(svg);
+  }
+  /**
+   * 估算文字宽度（考虑中英文混合）
+   */
+  static estimateCharWidth(text, fontSize) {
+    let width = 0;
+    for (const char of text) {
+      if (/[\u4e00-\u9fff\u3000-\u303f\uff00-\uffef]/.test(char)) {
+        width += fontSize * 1;
+      } else {
+        width += fontSize * 0.55;
+      }
+    }
+    return Math.max(width, fontSize);
+  }
+  /**
+   * 计算旋转后的包围盒尺寸
+   */
+  static calcRotatedBBox(w2, h, deg) {
+    const rad = Math.abs(deg) * Math.PI / 180;
+    const sinA = Math.sin(rad);
+    const cosA = Math.cos(rad);
+    const boxWidth = Math.ceil(w2 * cosA + h * sinA) + 4;
+    const boxHeight = Math.ceil(w2 * sinA + h * cosA) + 4;
+    return { boxWidth, boxHeight };
+  }
+  /**
+   * XML 特殊字符转义
+   */
+  static escapeXml(str) {
+    return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
+  }
+}
+class TileGenerator {
+  /**
+   * 生成平铺水印的 composite overlay 数组
+   */
+  static generate(watermarkBuffer, watermarkWidth, watermarkHeight, canvasWidth, canvasHeight, spacing) {
+    const overlays = [];
+    const stepX = watermarkWidth + spacing;
+    const stepY = watermarkHeight + spacing;
+    for (let y2 = 0; y2 < canvasHeight && overlays.length < this.MAX_OVERLAYS; y2 += stepY) {
+      for (let x2 = 0; x2 < canvasWidth && overlays.length < this.MAX_OVERLAYS; x2 += stepX) {
+        overlays.push({
+          input: watermarkBuffer,
+          left: Math.round(x2),
+          top: Math.round(y2)
+        });
+      }
+    }
+    return overlays;
+  }
+}
+/** 最大 overlay 数量，防止内存溢出 */
+__publicField(TileGenerator, "MAX_OVERLAYS", 500);
+class WatermarkEngine {
+  /**
+   * 为单张图片添加水印
+   */
+  async process(inputPath, outputPath, options) {
+    try {
+      const image = sharp(inputPath);
+      const metadata = await image.metadata();
+      const imgWidth = metadata.width || 800;
+      const imgHeight = metadata.height || 600;
+      let watermarkBuffer;
+      let wmWidth;
+      let wmHeight;
+      if (options.type === "text") {
+        const fontSize = options.adaptive ? Math.round(imgWidth * (options.fontSize || 36) / 1e3) : options.fontSize || 36;
+        watermarkBuffer = TextRenderer.render({
+          text: options.text || "",
+          fontSize,
+          color: options.color || "#FFFFFF",
+          rotation: options.rotation,
+          opacity: options.opacity / 100
+        });
+        const svgMeta = await sharp(watermarkBuffer).metadata();
+        wmWidth = svgMeta.width || 100;
+        wmHeight = svgMeta.height || 50;
+      } else {
+        const result2 = await this.prepareImageWatermark(
+          options.watermarkPath,
+          imgWidth,
+          imgHeight,
+          options.scale || 15,
+          options.rotation,
+          options.opacity / 100,
+          options.adaptive
+        );
+        watermarkBuffer = result2.buffer;
+        wmWidth = result2.width;
+        wmHeight = result2.height;
+      }
+      let compositeInput;
+      if (options.tileMode) {
+        compositeInput = TileGenerator.generate(
+          watermarkBuffer,
+          wmWidth,
+          wmHeight,
+          imgWidth,
+          imgHeight,
+          options.tileSpacing || 200
+        );
+      } else {
+        compositeInput = [{
+          input: watermarkBuffer,
+          ...this.calcGravityAndOffset(
+            options.position,
+            options.offsetX || 0,
+            options.offsetY || 0
+          )
+        }];
+      }
+      await image.composite(compositeInput).toFile(outputPath);
+      const outputStats = fs$2.statSync(outputPath);
+      return {
+        status: "success",
+        inputPath,
+        outputPath,
+        outputSize: outputStats.size
+      };
+    } catch (e) {
+      return {
+        status: "error",
+        inputPath,
+        error: e.message
+      };
+    }
+  }
+  /**
+   * 九宫格位置 → Sharp gravity + offset
+   * T-008
+   */
+  calcGravityAndOffset(position2, offsetX, offsetY) {
+    const gravity = POSITION_TO_GRAVITY[position2] || "southeast";
+    if (offsetX !== 0 || offsetY !== 0) {
+      return { gravity };
+    }
+    return { gravity };
+  }
+  /**
+   * 准备图片水印：读取 → 缩放 → 旋转 → 透明度
+   * T-015
+   */
+  async prepareImageWatermark(watermarkPath, imageWidth, _imageHeight, scalePercent, rotation, opacity, _adaptive) {
+    let pipeline = sharp(watermarkPath);
+    const wmMeta = await pipeline.metadata();
+    const origWidth = wmMeta.width || 100;
+    const origHeight = wmMeta.height || 100;
+    const targetWidth = Math.round(imageWidth * scalePercent / 100);
+    const ratio = targetWidth / origWidth;
+    const targetHeight = Math.round(origHeight * ratio);
+    pipeline = pipeline.resize(targetWidth, targetHeight, { fit: "inside" });
+    if (rotation !== 0) {
+      pipeline = pipeline.rotate(rotation, { background: { r: 0, g: 0, b: 0, alpha: 0 } });
+    }
+    pipeline = pipeline.ensureAlpha();
+    if (opacity < 1) {
+      const { data, info } = await pipeline.raw().toBuffer({ resolveWithObject: true });
+      for (let i = 3; i < data.length; i += 4) {
+        data[i] = Math.round(data[i] * opacity);
+      }
+      const processedBuffer = await sharp(data, {
+        raw: { width: info.width, height: info.height, channels: 4 }
+      }).png().toBuffer();
+      const finalMeta2 = await sharp(processedBuffer).metadata();
+      return {
+        buffer: processedBuffer,
+        width: finalMeta2.width || targetWidth,
+        height: finalMeta2.height || targetHeight
+      };
+    }
+    const buffer2 = await pipeline.png().toBuffer();
+    const finalMeta = await sharp(buffer2).metadata();
+    return {
+      buffer: buffer2,
+      width: finalMeta.width || targetWidth,
+      height: finalMeta.height || targetHeight
+    };
+  }
+}
+const engine = new WatermarkEngine();
+function getUniqueOutputPath(basePath) {
+  if (!fs$2.existsSync(basePath)) return basePath;
+  const dir = path.dirname(basePath);
+  const ext = path.extname(basePath);
+  const name = path.basename(basePath, ext);
+  let counter = 1;
+  while (fs$2.existsSync(path.join(dir, `${name}_${counter}${ext}`))) {
+    counter++;
+  }
+  return path.join(dir, `${name}_${counter}${ext}`);
+}
+function registerWatermarkHandlers() {
+  electron.ipcMain.handle("watermark:start", async (event, request) => {
+    const results2 = [];
+    const { files: files2, watermarkOptions, outputDir } = request;
+    for (let i = 0; i < files2.length; i++) {
+      const filePath = files2[i];
+      const ext = path.extname(filePath);
+      const baseName = path.basename(filePath, ext);
+      const outDir = outputDir || path.dirname(filePath);
+      const suffix = watermarkOptions.outputSuffix || "_watermarked";
+      const rawOutputPath = path.join(outDir, `${baseName}${suffix}${ext}`);
+      const outputPath = getUniqueOutputPath(rawOutputPath);
+      if (!fs$2.existsSync(outDir)) {
+        fs$2.mkdirSync(outDir, { recursive: true });
+      }
+      try {
+        const result2 = await engine.process(filePath, outputPath, watermarkOptions);
+        results2.push(result2);
+        event.sender.send("watermark:progress", {
+          index: i,
+          status: "success",
+          outputPath: result2.outputPath,
+          outputSize: result2.outputSize
+        });
+      } catch (e) {
+        const errorResult = {
+          status: "error",
+          inputPath: filePath,
+          error: e.message
+        };
+        results2.push(errorResult);
+        event.sender.send("watermark:progress", {
+          index: i,
+          status: "error",
+          error: e.message
+        });
+      }
+    }
+    return results2;
+  });
+  electron.ipcMain.handle("watermark:checkFileSize", async (_event, filePaths) => {
+    return Promise.all(filePaths.map(async (p) => {
+      try {
+        const stats = fs$2.statSync(p);
+        const meta = await sharp(p).metadata();
+        return {
+          path: p,
+          fileSize: stats.size,
+          width: meta.width || 0,
+          height: meta.height || 0,
+          isLarge: stats.size > 50 * 1024 * 1024 || (meta.width || 0) > 8e3 || (meta.height || 0) > 8e3
+        };
+      } catch {
+        return {
+          path: p,
+          fileSize: 0,
+          width: 0,
+          height: 0,
+          isLarge: false
+        };
+      }
+    }));
+  });
 }
 const require$1 = node_module.createRequire(typeof document === "undefined" ? require("url").pathToFileURL(__filename).href : _documentCurrentScript && _documentCurrentScript.tagName.toUpperCase() === "SCRIPT" && _documentCurrentScript.src || new URL("main.js", document.baseURI).href);
 const __dirname$1 = path.dirname(node_url.fileURLToPath(typeof document === "undefined" ? require("url").pathToFileURL(__filename).href : _documentCurrentScript && _documentCurrentScript.tagName.toUpperCase() === "SCRIPT" && _documentCurrentScript.src || new URL("main.js", document.baseURI).href));
@@ -50524,6 +50821,27 @@ electron.ipcMain.handle("file:readText", async (_event, filePath) => {
   const fs2 = await import("node:fs");
   return fs2.readFileSync(filePath, "utf-8");
 });
+electron.ipcMain.handle("file:readImageBase64", async (_event, filePath) => {
+  const fs2 = await import("node:fs");
+  const nodePath = await import("node:path");
+  const buffer2 = fs2.readFileSync(filePath);
+  const ext = nodePath.extname(filePath).toLowerCase().replace(".", "");
+  const mimeMap = {
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    png: "image/png",
+    webp: "image/webp",
+    avif: "image/avif",
+    tiff: "image/tiff",
+    tif: "image/tiff",
+    gif: "image/gif",
+    svg: "image/svg+xml",
+    bmp: "image/bmp",
+    ico: "image/x-icon"
+  };
+  const mime = mimeMap[ext] || "application/octet-stream";
+  return `data:${mime};base64,${buffer2.toString("base64")}`;
+});
 const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp", ".gif", ".avif", ".tiff", ".tif", ".bmp", ".ico", ".svg"];
 electron.ipcMain.handle("file:listImages", async (_event, folderPath) => {
   const fs2 = await import("node:fs");
@@ -50555,6 +50873,7 @@ registerSystemHandlers();
 registerConfigHandlers();
 registerClickerHandlers();
 registerDocConvertHandlers();
+registerWatermarkHandlers();
 electron.app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     cleanupClickerHandlers();

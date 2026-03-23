@@ -21,6 +21,7 @@ import {
   MoonOutline,
   HandLeftOutline,
   DocumentTextOutline,
+  WaterOutline,
 } from '@vicons/ionicons5'
 import { h } from 'vue'
 import { useTheme } from './composables/useTheme'
@@ -145,6 +146,11 @@ const menuOptions: MenuOption[] = [
     label: '文档转换',
     key: '/doc-convert',
     icon: () => h(NIcon, null, { default: () => h(DocumentTextOutline) }),
+  },
+  {
+    label: '图片水印',
+    key: '/watermark',
+    icon: () => h(NIcon, null, { default: () => h(WaterOutline) }),
   },
 ]
 
