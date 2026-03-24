@@ -1,0 +1,1 @@
+src/components/FileList.vue(10,7): error TS6133: 'props' is declared but its value is never read.

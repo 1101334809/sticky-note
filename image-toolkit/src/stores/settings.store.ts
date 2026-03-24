@@ -6,12 +6,14 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
+export type ThemeMode = 'light' | 'dark' | 'system'
+
 export const useSettingsStore = defineStore('settings', () => {
   // ====== State ======
   const outputDir = ref<string | null>(null)
   const keepOriginalFile = ref(true)
   const soundEnabled = ref(true)
-  const theme = ref<'light' | 'dark'>('light')
+  const theme = ref<ThemeMode>('system')
 
   // ====== Internal ======
 
@@ -39,7 +41,7 @@ export const useSettingsStore = defineStore('settings', () => {
     outputDir.value = await loadFromConfig('outputDir', null)
     keepOriginalFile.value = await loadFromConfig('keepOriginalFile', true)
     soundEnabled.value = await loadFromConfig('soundEnabled', true)
-    theme.value = await loadFromConfig('theme', 'light')
+    theme.value = await loadFromConfig('theme', 'system')
   }
 
   async function setOutputDir(dir: string | null) {
@@ -57,7 +59,7 @@ export const useSettingsStore = defineStore('settings', () => {
     await saveToConfig('soundEnabled', value)
   }
 
-  async function setTheme(value: 'light' | 'dark') {
+  async function setTheme(value: ThemeMode) {
     theme.value = value
     await saveToConfig('theme', value)
   }

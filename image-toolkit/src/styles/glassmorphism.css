@@ -1,0 +1,41 @@
+/* 全局光效背景 */
+.glass-bg {
+  position: relative;
+  z-index: 1;
+}
+
+.glass-bg::before {
+  content: '';
+  position: fixed; 
+  inset: 0; 
+  z-index: -1;
+  background:
+    radial-gradient(circle at 15% 50%, rgba(92,107,192,0.08), transparent 25%),
+    radial-gradient(circle at 85% 20%, rgba(118,75,162,0.06), transparent 25%);
+  pointer-events: none;
+}
+
+/* 毛玻璃卡片材质 */
+.glass-card {
+  background: var(--bg-card);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-radius: var(--radius-lg);
+  border: var(--glass-border);
+  box-shadow: var(--shadow-md);
+  transition: all var(--duration-fast) var(--ease-standard);
+}
+
+.glass-card-hoverable:hover {
+  background: var(--bg-card-hover);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* 毛玻璃侧边栏 */
+.glass-sidebar {
+  background: var(--bg-sidebar);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-right: var(--glass-border);
+}

@@ -3,11 +3,10 @@
  * ========================================== */
 
 /* 列表项入退场动画 */
-.list-enter-active {
-  transition: all 0.3s ease;
-}
-.list-leave-active {
-  transition: all 0.2s ease;
+.list-enter-active,
+.list-leave-active,
+.list-move {
+  transition: all var(--duration-normal) var(--ease-standard);
 }
 .list-enter-from {
   opacity: 0;
@@ -16,32 +15,45 @@
 .list-leave-to {
   opacity: 0;
   transform: translateX(16px);
-}
-.list-move {
-  transition: transform 0.3s ease;
+  position: absolute;
 }
 
 /* 淡入淡出 */
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.2s ease;
+  transition: opacity var(--duration-fast) var(--ease-standard);
 }
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
 }
 
+/* 新增: 页面 FadeIn + SlideUp 切换动画 */
+.page-fade-up-enter-active {
+  transition: opacity var(--duration-normal) var(--ease-decelerate),
+              transform var(--duration-normal) var(--ease-decelerate);
+}
+.page-fade-up-leave-active {
+  transition: opacity 200ms var(--ease-standard),
+              transform 200ms var(--ease-standard);
+}
+.page-fade-up-enter-from {
+  opacity: 0;
+  transform: translateY(12px);
+}
+.page-fade-up-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
 /* 缩放入场 */
 .scale-enter-active {
-  transition: all 0.25s ease;
+  transition: all 0.25s var(--ease-decelerate);
 }
 .scale-leave-active {
-  transition: all 0.15s ease;
+  transition: all 0.15s var(--ease-standard);
 }
-.scale-enter-from {
-  opacity: 0;
-  transform: scale(0.9);
-}
+.scale-enter-from,
 .scale-leave-to {
   opacity: 0;
   transform: scale(0.9);

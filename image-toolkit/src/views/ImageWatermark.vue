@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
- * 图片水印主页面
- * T-003, T-004, T-013, T-014, T-022, T-023, T-026, T-027
+ * 图片水印主页面 — 重构版
+ * T-003, T-004, T-013, T-014, T-022, T-023, T-026, T-027, T-046, T-047, T-048
  */
 import { ref, inject, watch, computed, onMounted, type Ref } from 'vue'
 import {
@@ -15,6 +15,8 @@ import Toolbar from '../components/Toolbar.vue'
 import OutputDirPicker from '../components/OutputDirPicker.vue'
 import WatermarkParams from '../components/WatermarkParams.vue'
 import WatermarkPreview from '../components/WatermarkPreview.vue'
+import GlassCard from '../components/ui/GlassCard.vue'
+import EmptyState from '../components/ui/EmptyState.vue'
 import { useFileStore } from '../stores/file.store'
 import { useSettingsStore } from '../stores/settings.store'
 import type { WatermarkSettings } from '../components/WatermarkParams.vue'
@@ -267,92 +269,102 @@ async function openOutputDir() {
 
 <template>
   <div class="watermark-page">
-    <!-- 工具栏 -->
-    <Toolbar
-      :file-count="fileStore.fileCount"
-      :is-processing="processing"
-      @clear="fileStore.clearFiles()"
-    >
-      <template #left>
-        <NButton @click="selectFiles" type="primary" size="small">
-          <template #icon><NIcon><FolderOpenOutline /></NIcon></template>
-          选择图片
-        </NButton>
-      </template>
-
-      <template #right>
-        <NButton
-          v-if="lastOutputDir"
-          size="small"
-          @click="openOutputDir"
+    
+    <!-- 全局防空状态，若没有文件整体显示拖拽区 T-046 -->
+    <template v-if="fileStore.files.length === 0">
+      <div style="height: 100%; display: flex; align-items: center; justify-content: center;">
+        <EmptyState
+          icon="🖼️"
+          title="图片水印"
+          description="添加文字或图片水印，保护你的作品，可支持单张或批量处理。支持拖拽。"
+          style="width: 100%; max-width: 600px;"
         >
-          <template #icon><NIcon><FolderOutline /></NIcon></template>
-          打开输出目录
-        </NButton>
-
-        <NButton
-          size="small"
-          type="primary"
-          :loading="processing"
-          :disabled="fileStore.files.length === 0 || processing"
-          @click="startWatermark"
-        >
-          <template #icon><NIcon><WaterOutline /></NIcon></template>
-          {{ processing ? '处理中...' : '开始添加水印' }}
-        </NButton>
-      </template>
-    </Toolbar>
-
-    <!-- 主内容区 -->
-    <div class="main-content">
-      <!-- 左侧：文件列表 -->
-      <div class="file-panel">
-        <FileList
-          :files="fileStore.files"
-          :show-progress="true"
-          empty-icon="🎨"
-          empty-text="拖拽或选择图片"
-          @remove="(path: string) => fileStore.removeFile(path)"
-          @click-empty="selectFiles"
-        />
-      </div>
-
-      <!-- 中间：实时预览 -->
-      <div class="preview-panel">
-        <template v-if="fileStore.files.length === 0">
-          <!-- 空状态 T-026 -->
-          <div class="empty-state" @click="selectFiles">
-            <div class="empty-state-icon">
-              <NIcon size="64" color="var(--text-secondary)"><FolderOpenOutline /></NIcon>
+          <template #action>
+            <div style="display: flex; gap: 12px; justify-content: center">
+              <NButton @click="selectFiles" type="primary" size="large" class="btn-glow hover-lift">
+                <template #icon><NIcon><FolderOpenOutline /></NIcon></template>
+                打开图片
+              </NButton>
             </div>
-            <p class="empty-state-title">点击选择图片，或拖拽到这里</p>
-            <p class="empty-state-desc">
-              支持 JPEG / PNG / WebP / AVIF / TIFF<br>
-              添加文字或图片水印，保护你的作品
-            </p>
-          </div>
+          </template>
+        </EmptyState>
+      </div>
+    </template>
+
+    <template v-else>
+      <!-- 工具栏 -->
+      <Toolbar
+        :file-count="fileStore.fileCount"
+        :is-processing="processing"
+        @clear="fileStore.clearFiles()"
+      >
+        <template #left>
+          <NButton @click="selectFiles" type="primary" size="small" class="hover-lift">
+            <template #icon><NIcon><FolderOpenOutline /></NIcon></template>
+            追加图片
+          </NButton>
         </template>
-        <template v-else>
+
+        <template #right>
+          <NButton
+            v-if="lastOutputDir"
+            size="small"
+            @click="openOutputDir"
+            class="hover-lift"
+          >
+            <template #icon><NIcon><FolderOutline /></NIcon></template>
+            打开输出目录
+          </NButton>
+
+          <NButton
+            size="small"
+            type="primary"
+            class="btn-glow"
+            :loading="processing"
+            :disabled="fileStore.files.length === 0 || processing"
+            @click="startWatermark"
+          >
+            <template #icon><NIcon><WaterOutline /></NIcon></template>
+            {{ processing ? '处理中...' : '开始添加水印' }}
+          </NButton>
+        </template>
+      </Toolbar>
+
+      <!-- 主内容区 -->
+      <div class="main-content">
+        <!-- 左侧：文件列表 -->
+        <GlassCard class="file-panel" padding="0">
+          <FileList
+            :files="fileStore.files"
+            :show-progress="true"
+            @remove="(path: string) => fileStore.removeFile(path)"
+          />
+        </GlassCard>
+
+        <!-- 中间：实时预览 -->
+        <GlassCard class="preview-panel" padding="0">
           <WatermarkPreview
             :file-path="selectedFilePath"
             :params="previewParams"
             @update:position="onPreviewPositionUpdate"
           />
-        </template>
-      </div>
+        </GlassCard>
 
-      <!-- 右侧：参数面板 -->
-      <div class="params-panel">
-        <div class="params-header">⚙️ 水印参数</div>
-        <WatermarkParams
-          v-model="watermarkSettings"
-          @select-watermark-image="selectWatermarkImage"
-        />
-        <div class="output-section">
-          <OutputDirPicker />
-        </div>
+        <!-- 右侧：参数面板 -->
+        <GlassCard class="params-panel" padding="0">
+          <div class="params-header">⚙️ 水印参数</div>
+          <div class="params-scroll">
+            <WatermarkParams
+              v-model="watermarkSettings"
+              @select-watermark-image="selectWatermarkImage"
+            />
+          </div>
+          <div class="output-section">
+            <OutputDirPicker />
+          </div>
+        </GlassCard>
       </div>
-    </div>
+    </template>
   </div>
 </template>
 
@@ -363,100 +375,68 @@ async function openOutputDir() {
   height: 100%;
   padding: 16px;
   gap: 12px;
+  box-sizing: border-box;
 }
 
 .main-content {
   display: flex;
   flex: 1;
-  gap: 12px;
+  gap: 16px;
   min-height: 0;
 }
 
 .file-panel {
-  width: 220px;
-  min-width: 180px;
+  width: 240px;
+  min-width: 200px;
   flex-shrink: 0;
-  overflow-y: auto;
-  border-radius: 8px;
-  background: var(--bg-card, #fff);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.04);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .preview-panel {
   flex: 1;
   min-width: 300px;
-  border-radius: 8px;
   overflow: hidden;
-  background: var(--bg-body, #f4f5f7);
-  box-shadow: inset 0 2px 8px rgba(0,0,0,0.02);
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
 }
 
 .params-panel {
-  width: 280px;
-  min-width: 240px;
+  width: 320px;
+  min-width: 280px;
   flex-shrink: 0;
-  overflow-y: auto;
-  border-radius: 8px;
-  background: var(--bg-card, #fff);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.04);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .params-header {
-  padding: 10px 12px;
+  padding: 14px 16px;
   font-weight: 600;
-  font-size: 14px;
-  border-bottom: 1px solid var(--border-color, #eee);
+  font-size: 1.1em;
+  color: var(--text-main);
+  border-bottom: 1px solid var(--border-light);
+  background: rgba(255, 255, 255, 0.3);
+}
+[data-theme="dark"] .params-header {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.params-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
 }
 
 .output-section {
-  padding: 12px;
-  border-top: 1px solid var(--border-color, #eee);
-  margin-top: auto;
+  padding: 16px;
+  border-top: 1px solid var(--border-light);
+  background: rgba(255, 255, 255, 0.2);
 }
-
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  padding: 40px;
-  text-align: center;
-  transition: all 0.2s;
-  width: 100%;
-  height: 100%;
-}
-.empty-state-icon {
-  width: 96px;
-  height: 96px;
-  border-radius: 50%;
-  background: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.06);
-  margin-bottom: 24px;
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-.empty-state:hover .empty-state-icon {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 32px rgba(24, 160, 88, 0.15);
-}
-.empty-state-title {
-  font-weight: 500;
-  font-size: 16px;
-  color: var(--text-primary);
-  margin: 0 0 12px 0;
-}
-.empty-state-desc {
-  font-size: 13px;
-  color: var(--text-secondary);
-  line-height: 1.6;
-  margin: 0;
+[data-theme="dark"] .output-section {
+  background: rgba(0, 0, 0, 0.1);
 }
 </style>

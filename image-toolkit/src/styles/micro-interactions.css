@@ -1,0 +1,29 @@
+/* 发光阴影按钮 */
+.btn-glow {
+  box-shadow: var(--shadow-glow);
+  transition: box-shadow var(--duration-fast) var(--ease-standard),
+              transform var(--duration-fast) var(--ease-standard);
+}
+.btn-glow:hover { 
+  box-shadow: 0 6px 20px rgba(92,107,192,0.4); 
+}
+.btn-glow:active { 
+  transform: translateY(1px); 
+}
+
+/* 全局焦点光环（用于代替默认 Outline） */
+:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(92, 107, 192, 0.4);
+  border-radius: inherit;
+}
+
+/* 通用悬浮抬升效果 */
+.hover-lift {
+  transition: transform var(--duration-fast) var(--ease-standard),
+              box-shadow var(--duration-fast) var(--ease-standard);
+}
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}

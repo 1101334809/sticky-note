@@ -5,6 +5,8 @@ import App from './App.vue'
 
 // 全局样式
 import './styles/variables.css'
+import './styles/glassmorphism.css'
+import './styles/micro-interactions.css'
 import './styles/transitions.css'
 
 const app = createApp(App)

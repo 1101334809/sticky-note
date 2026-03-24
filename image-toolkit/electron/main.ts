@@ -24,8 +24,14 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
 
 let win: BrowserWindow | null
 
+export function getMainWindow() {
+  return win
+}
+
 function createWindow() {
-  nativeTheme.themeSource = 'light'
+  // 恢复之前可能保存的主题状态，这里可以直接设为 system 让其根据 html 的 data-theme 取舍，或者根据配置文件的值设定
+  // 配置加载和预读已经在 config.ts 处理，preload.ts 里负责将配置转为 css 变量。这里的 backgroundColor 直接设透明或浅色即可，因为渲染层能立刻用正确的底色覆盖。
+  nativeTheme.themeSource = 'system'
   Menu.setApplicationMenu(null)
 
   win = new BrowserWindow({
@@ -35,7 +41,9 @@ function createWindow() {
     minHeight: 600,
     title: 'Universal Toolkit',
     icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
-    backgroundColor: '#ffffff',
+    backgroundColor: '#ffffff', // preload 执行后会立刻根据用户设置改变，但在那前默认白底即可
+    frame: false,               // 无边框设计
+    titleBarStyle: 'hidden',    // 隐藏标题栏但保留 macOS 的红绿灯(如果我们配置了 darwin 平台的话)
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
     },
@@ -47,6 +55,17 @@ function createWindow() {
     win.loadFile(path.join(RENDERER_DIST, 'index.html'))
   }
 }
+
+// ====== 窗口控制 IPC ======
+ipcMain.on('window:minimize', () => win?.minimize())
+ipcMain.on('window:maximize', () => {
+  if (win?.isMaximized()) {
+    win.unmaximize()
+  } else {
+    win?.maximize()
+  }
+})
+ipcMain.on('window:close', () => win?.close())
 
 // ====== 通用 IPC ======
 ipcMain.handle('dialog:openFiles', async (_event, options: {

@@ -1,30 +1,33 @@
 <script setup lang="ts">
 /**
- * 连点器页面
+ * 连点器页面 — 重构版
  *
- * 提供点击频率、按键、位置、次数等配置，以及启停控制。
+ * T-043, T-044, T-045
  */
 import { onMounted, onUnmounted, computed } from 'vue'
 import {
-  NCard,
   NSpace,
   NButton,
-  NRadioGroup,
-  NRadio,
   NInputNumber,
   NSlider,
-  NTag,
   NAlert,
   NGrid,
   NGi,
-  NStatistic,
   NIcon,
 } from 'naive-ui'
 import {
   PlayOutline,
   StopOutline,
+  HardwareChipOutline,
+  LocateOutline,
+  OptionsOutline,
+  TimerOutline,
 } from '@vicons/ionicons5'
 import { useClickerStore } from '../stores/clicker.store'
+import GlassCard from '../components/ui/GlassCard.vue'
+import SegmentedControl from '../components/ui/SegmentedControl.vue'
+import HotkeyDisplay from '../components/ui/HotkeyDisplay.vue'
+import PillBadge from '../components/ui/PillBadge.vue'
 
 const store = useClickerStore()
 
@@ -52,7 +55,13 @@ const buttonText = computed(() => {
   }
 })
 
-const buttonType = computed(() => isRunning.value ? 'error' : 'success')
+const stateTag = computed(() => {
+  switch (store.state) {
+    case 'countdown': return { status: 'warning' as const, label: '倒计时' }
+    case 'running': return { status: 'processing' as const, label: '运行中' }
+    default: return { status: 'waiting' as const, label: '就绪' }
+  }
+})
 
 // ====== 方法 ======
 function handleToggle() {
@@ -66,12 +75,12 @@ function handleIntervalChange(val: number | null) {
   }
 }
 
-function handleButtonChange(val: string) {
+function handleButtonChange(val: string | number) {
   store.updateConfig({ button: val as any })
   store.saveConfig()
 }
 
-function handleClickTypeChange(val: string) {
+function handleClickTypeChange(val: string | number) {
   store.updateConfig({ clickType: val as any })
   store.saveConfig()
 }
@@ -81,7 +90,7 @@ function handleMaxClicksChange(val: number | null) {
   store.saveConfig()
 }
 
-function handlePositionModeChange(val: string) {
+function handlePositionModeChange(val: string | number) {
   store.updateConfig({ positionMode: val as any })
   store.saveConfig()
 }
@@ -104,265 +113,484 @@ function handleDelayChange(val: number | null) {
   store.updateConfig({ startDelay: val || 0 })
   store.saveConfig()
 }
+
+// 选项
+const buttonOptions = [
+  { label: '左键', value: 'left' },
+  { label: '中键', value: 'middle' },
+  { label: '右键', value: 'right' },
+]
+
+const clickTypeOptions = [
+  { label: '单击', value: 'single' },
+  { label: '双击', value: 'double' },
+]
+
+const limitOptions = [
+  { label: '无限', value: 'unlimited' },
+  { label: '固定次数', value: 'limited' },
+]
+
+const positionOptions = [
+  { label: '🖱️ 跟随鼠标', value: 'follow' },
+  { label: '📍 固定坐标', value: 'fixed' },
+]
 </script>
 
 <template>
   <div class="clicker-view">
-    <!-- 顶部状态卡片 -->
-    <NCard
-      size="small"
-      :class="['status-card', { running: isRunning }]"
-    >
-      <NGrid :cols="3" :x-gap="16">
-        <NGi>
-          <NStatistic label="状态">
-            <NTag
-              :type="isRunning ? 'error' : 'default'"
-              :bordered="false"
-              round
-              size="small"
-            >
-              <span v-if="store.state === 'running'" class="blink">●</span>
-              {{ store.state === 'idle' ? '就绪' : store.state === 'countdown' ? '倒计时' : '运行中' }}
-            </NTag>
-          </NStatistic>
-        </NGi>
-        <NGi>
-          <NStatistic label="已点击" :value="store.clickCount">
-            <template #suffix> 次</template>
-          </NStatistic>
-        </NGi>
-        <NGi>
-          <NStatistic label="频率" :value="cpsDisplay">
-            <template #suffix> CPS</template>
-          </NStatistic>
-        </NGi>
-      </NGrid>
-    </NCard>
+    <div class="layout-container">
 
-    <!-- 启停按钮 -->
-    <NButton
-      class="toggle-btn"
-      :type="buttonType"
-      size="large"
-      block
-      strong
-      secondary
-      :disabled="store.state === 'countdown'"
-      @click="handleToggle"
-    >
-      <template #icon>
-        <NIcon>
-          <StopOutline v-if="isRunning" />
-          <PlayOutline v-else />
-        </NIcon>
-      </template>
-      {{ buttonText }}
-    </NButton>
+      <!-- ================= 左侧 状态面板 ================= -->
+      <div class="left-panel">
+        
+        <GlassCard radius="lg" padding="24px" class="status-card" :class="{ running: isRunning }">
+          <div class="panel-header">
+            <NIcon size="24" :color="isRunning ? 'var(--error)' : 'var(--primary)'"><TimerOutline /></NIcon>
+            <h2 class="header-title">运行状态</h2>
+            <PillBadge :status="stateTag.status" :label="stateTag.label" style="margin-left: auto" />
+          </div>
 
-    <NAlert type="info" :bordered="false" style="margin-bottom: 16px;">
-      全局热键: <strong>F6</strong> 启动/停止 · <strong>Esc</strong> 紧急停止
-    </NAlert>
+          <div class="stats-grid">
+            <div class="stat-item">
+              <div class="stat-label">已点击</div>
+              <div class="stat-value">{{ store.clickCount }}<span class="stat-unit">次</span></div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-label">当前频率</div>
+              <div class="stat-value">{{ cpsDisplay }}<span class="stat-unit">CPS</span></div>
+            </div>
+          </div>
 
-    <!-- 点击配置 -->
-    <NCard title="点击配置" size="small" style="margin-bottom: 16px;">
-      <NSpace vertical :size="16">
-        <!-- 点击间隔 -->
-        <div>
-          <div class="label">点击间隔（ms）</div>
-          <NGrid :cols="24" :x-gap="12">
-            <NGi :span="16">
-              <NSlider
-                :value="store.config.interval"
-                :min="20"
-                :max="5000"
-                :step="10"
-                :disabled="isRunning"
-                @update:value="handleIntervalChange"
-              />
-            </NGi>
-            <NGi :span="8">
-              <NInputNumber
-                :value="store.config.interval"
-                :min="20"
-                :max="5000"
-                :step="10"
-                size="small"
-                :disabled="isRunning"
-                @update:value="handleIntervalChange"
-              >
-                <template #suffix>ms</template>
-              </NInputNumber>
-            </NGi>
-          </NGrid>
-        </div>
+          <div class="spacer"></div>
 
-        <!-- 按键选择 -->
-        <div>
-          <div class="label">点击按键</div>
-          <NRadioGroup
-            :value="store.config.button"
-            :disabled="isRunning"
-            @update:value="handleButtonChange"
+          <NAlert type="info" :bordered="false" class="hotkey-alert">
+            <template #icon><NIcon><OptionsOutline /></NIcon></template>
+            <div style="display:flex; flex-direction: column; gap: 8px;">
+              <div class="hotkey-row">
+                <span>启动/停止</span> <HotkeyDisplay :keys="['F6']" />
+              </div>
+              <div class="hotkey-row">
+                <span>紧急停止</span> <HotkeyDisplay :keys="['Esc']" />
+              </div>
+            </div>
+          </NAlert>
+
+          <NButton
+            class="toggle-btn btn-glow"
+            :type="isRunning ? 'error' : 'primary'"
+            size="large"
+            block
+            strong
+            :disabled="store.state === 'countdown'"
+            @click="handleToggle"
           >
-            <NRadio value="left">左键</NRadio>
-            <NRadio value="right">右键</NRadio>
-            <NRadio value="middle">中键</NRadio>
-          </NRadioGroup>
-        </div>
+            <template #icon>
+              <NIcon size="20">
+                <StopOutline v-if="isRunning" />
+                <PlayOutline v-else />
+              </NIcon>
+            </template>
+            {{ buttonText }}
+          </NButton>
 
-        <!-- 点击方式 -->
-        <div>
-          <div class="label">点击方式</div>
-          <NRadioGroup
-            :value="store.config.clickType"
-            :disabled="isRunning"
-            @update:value="handleClickTypeChange"
-          >
-            <NRadio value="single">单击</NRadio>
-            <NRadio value="double">双击</NRadio>
-          </NRadioGroup>
-        </div>
+        </GlassCard>
+      </div>
 
-        <!-- 次数限制 -->
-        <div>
-          <div class="label">点击次数</div>
-          <NRadioGroup
-            :value="store.config.maxClicks === 0 ? 'unlimited' : 'limited'"
-            :disabled="isRunning"
-            @update:value="(v: string) => handleMaxClicksChange(v === 'unlimited' ? 0 : 100)"
-          >
-            <NRadio value="unlimited">无限</NRadio>
-            <NRadio value="limited">固定次数</NRadio>
-          </NRadioGroup>
-          <NInputNumber
-            v-if="store.config.maxClicks > 0"
-            :value="store.config.maxClicks"
-            :min="1"
-            :max="1000000"
-            :step="10"
-            size="small"
-            style="margin-top: 8px; width: 200px;"
-            :disabled="isRunning"
-            @update:value="handleMaxClicksChange"
-          >
-            <template #suffix>次</template>
-          </NInputNumber>
-        </div>
-      </NSpace>
-    </NCard>
+      <!-- ================= 右侧 配置面板 ================= -->
+      <div class="right-panel">
+        
+        <!-- 点击配置 T-043 -->
+        <GlassCard radius="lg" padding="20px">
+          <div class="card-title">
+            <NIcon size="18" class="title-icon"><HardwareChipOutline /></NIcon>
+            点击参数
+          </div>
 
-    <!-- 点击位置 -->
-    <NCard title="点击位置" size="small" style="margin-bottom: 16px;">
-      <NSpace vertical :size="16">
-        <NRadioGroup
-          :value="store.config.positionMode"
-          :disabled="isRunning"
-          @update:value="handlePositionModeChange"
-        >
-          <NSpace vertical :size="8">
-            <NRadio value="follow">🖱️ 跟随鼠标（在当前光标位置点击）</NRadio>
-            <NRadio value="fixed">📍 固定坐标（始终点击指定位置）</NRadio>
+          <NSpace vertical :size="24">
+            
+            <!-- 点击间隔 -->
+            <div class="setting-group">
+              <div class="setting-label">执行频率 (间隔 ms)</div>
+              <NGrid :cols="24" :x-gap="16" class="setting-content">
+                <NGi :span="16" style="display:flex; align-items:center;">
+                  <NSlider
+                    :value="store.config.interval"
+                    :min="20"
+                    :max="5000"
+                    :step="10"
+                    :disabled="isRunning"
+                    @update:value="handleIntervalChange"
+                  />
+                </NGi>
+                <NGi :span="8">
+                  <NInputNumber
+                    :value="store.config.interval"
+                    :min="20"
+                    :max="5000"
+                    :step="10"
+                    :disabled="isRunning"
+                    @update:value="handleIntervalChange"
+                  >
+                    <template #suffix>ms</template>
+                  </NInputNumber>
+                </NGi>
+              </NGrid>
+            </div>
+
+            <div class="divider"></div>
+
+            <NGrid :cols="2" :x-gap="24">
+              <NGi>
+                <!-- 按键选择 T-044 -->
+                <div class="setting-group">
+                  <div class="setting-label">触发按键</div>
+                  <SegmentedControl
+                    :modelValue="store.config.button"
+                    :options="buttonOptions"
+                    :disabled="isRunning"
+                    @update:modelValue="handleButtonChange"
+                    block
+                  />
+                </div>
+              </NGi>
+              <NGi>
+                <!-- 点击方式 T-044 -->
+                <div class="setting-group">
+                  <div class="setting-label">点击模式</div>
+                  <SegmentedControl
+                    :modelValue="store.config.clickType"
+                    :options="clickTypeOptions"
+                    :disabled="isRunning"
+                    @update:modelValue="handleClickTypeChange"
+                    block
+                  />
+                </div>
+              </NGi>
+            </NGrid>
+
+            <div class="divider"></div>
+
+            <!-- 次数限制 -->
+            <div class="setting-group">
+              <div class="setting-label flex-between">
+                <span>执行次数限制</span>
+                <SegmentedControl
+                  :modelValue="store.config.maxClicks === 0 ? 'unlimited' : 'limited'"
+                  :options="limitOptions"
+                  :disabled="isRunning"
+                  @update:modelValue="(v: string | number) => handleMaxClicksChange(v === 'unlimited' ? 0 : 100)"
+                  size="small"
+                />
+              </div>
+              <div v-if="store.config.maxClicks > 0" class="sub-setting fade-in">
+                <span class="sub-label">最大点击次数：</span>
+                <NInputNumber
+                  :value="store.config.maxClicks"
+                  :min="1"
+                  :max="1000000"
+                  :step="10"
+                  :disabled="isRunning"
+                  @update:value="handleMaxClicksChange"
+                  style="width: 160px;"
+                >
+                  <template #suffix>次</template>
+                </NInputNumber>
+              </div>
+            </div>
+
           </NSpace>
-        </NRadioGroup>
+        </GlassCard>
 
-        <!-- 固定坐标输入 -->
-        <div v-if="store.config.positionMode === 'fixed'" class="coord-inputs">
-          <NGrid :cols="2" :x-gap="12">
-            <NGi>
-              <NInputNumber
-                :value="store.config.fixedPosition.x"
-                :min="0"
-                :step="1"
-                size="small"
-                :disabled="isRunning"
-                @update:value="handleFixedXChange"
-              >
-                <template #prefix>X:</template>
-              </NInputNumber>
-            </NGi>
-            <NGi>
-              <NInputNumber
-                :value="store.config.fixedPosition.y"
-                :min="0"
-                :step="1"
-                size="small"
-                :disabled="isRunning"
-                @update:value="handleFixedYChange"
-              >
-                <template #prefix>Y:</template>
-              </NInputNumber>
-            </NGi>
-          </NGrid>
-        </div>
-      </NSpace>
-    </NCard>
+        <div style="height: 16px;"></div>
 
-    <!-- 高级设置 -->
-    <NCard title="高级设置" size="small">
-      <NSpace vertical :size="16">
-        <div>
-          <div class="label">启动延迟</div>
-          <NInputNumber
-            :value="store.config.startDelay"
-            :min="0"
-            :max="10"
-            :step="1"
-            size="small"
-            style="width: 200px;"
-            :disabled="isRunning"
-            @update:value="handleDelayChange"
-          >
-            <template #suffix>秒</template>
-          </NInputNumber>
-        </div>
-      </NSpace>
-    </NCard>
+        <NGrid :cols="2" :x-gap="16">
+          <NGi>
+            <!-- 点击位置 -->
+            <GlassCard radius="lg" padding="20px" style="height: 100%">
+              <div class="card-title">
+                <NIcon size="18" class="title-icon"><LocateOutline /></NIcon>
+                目标位置
+              </div>
+              
+              <div class="setting-group">
+                <SegmentedControl
+                  :modelValue="store.config.positionMode"
+                  :options="positionOptions"
+                  :disabled="isRunning"
+                  @update:modelValue="handlePositionModeChange"
+                  block
+                />
+              </div>
+
+              <!-- 固定坐标输入 -->
+              <div v-if="store.config.positionMode === 'fixed'" class="coord-inputs fade-in">
+                <NGrid :cols="2" :x-gap="12">
+                  <NGi>
+                    <NInputNumber
+                      :value="store.config.fixedPosition.x"
+                      :min="0"
+                      :step="1"
+                      :disabled="isRunning"
+                      @update:value="handleFixedXChange"
+                      placeholder="X 坐标"
+                    >
+                      <template #prefix>X:</template>
+                    </NInputNumber>
+                  </NGi>
+                  <NGi>
+                    <NInputNumber
+                      :value="store.config.fixedPosition.y"
+                      :min="0"
+                      :step="1"
+                      :disabled="isRunning"
+                      @update:value="handleFixedYChange"
+                      placeholder="Y 坐标"
+                    >
+                      <template #prefix>Y:</template>
+                    </NInputNumber>
+                  </NGi>
+                </NGrid>
+              </div>
+            </GlassCard>
+          </NGi>
+          
+          <NGi>
+            <!-- 高级设置 -->
+            <GlassCard radius="lg" padding="20px" style="height: 100%">
+              <div class="card-title">
+                <NIcon size="18" class="title-icon"><OptionsOutline /></NIcon>
+                高级
+              </div>
+
+              <div class="setting-group">
+                <div class="setting-label">启动延迟缓冲 (秒)</div>
+                <NInputNumber
+                  :value="store.config.startDelay"
+                  :min="0"
+                  :max="10"
+                  :step="1"
+                  :disabled="isRunning"
+                  @update:value="handleDelayChange"
+                  block
+                >
+                  <template #suffix>秒</template>
+                </NInputNumber>
+                <div class="setting-hint">给予准备时间，避免启动瞬间鼠标误触。</div>
+              </div>
+            </GlassCard>
+          </NGi>
+        </NGrid>
+      </div>
+
+    </div>
   </div>
 </template>
 
 <style scoped>
 .clicker-view {
-  padding: 20px;
-  max-width: 560px;
-  margin: 0 auto;
+  height: 100%;
+  padding: 16px 20px;
+  box-sizing: border-box;
+}
+
+.layout-container {
+  display: flex;
+  height: 100%;
+  gap: 20px;
+}
+
+/* 左侧面板 */
+.left-panel {
+  width: 320px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .status-card {
-  margin-bottom: 16px;
-  transition: border-color 0.3s;
+  height: 100%;
+  border: 2px solid transparent !important;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
 }
 
 .status-card.running {
-  border-color: #e88080;
+  border-color: rgba(232, 128, 128, 0.5) !important;
+  background: var(--error-light);
+  box-shadow: 0 0 20px rgba(208, 48, 80, 0.1);
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.header-title {
+  font-size: 1.25em;
+  font-weight: 700;
+  color: var(--text-main);
+  margin: 0;
+}
+
+/* 数据统计区 */
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+  background: rgba(255, 255, 255, 0.4);
+  padding: 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-light);
+}
+[data-theme="dark"] .stats-grid {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.stat-label {
+  font-size: 0.8em;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.stat-value {
+  font-size: 2em;
+  font-weight: 700;
+  color: var(--text-main);
+  line-height: 1;
+}
+
+.stat-unit {
+  font-size: 0.4em;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-left: 2px;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.hotkey-alert {
+  margin-bottom: 20px;
+  border-radius: var(--radius-md);
+  background: var(--bg-body);
+  border: 1px solid var(--border-light);
+}
+
+.hotkey-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85em;
+  color: var(--text-secondary);
 }
 
 .toggle-btn {
-  margin-bottom: 16px;
-  height: 48px;
-  font-size: 16px;
+  height: 54px;
+  font-size: 1.1em;
+  border-radius: var(--radius-md);
+  letter-spacing: 1px;
 }
 
-.label {
-  font-size: 13px;
-  color: var(--n-text-color-3, #999);
-  margin-bottom: 6px;
+/* 右侧面板 */
+.right-panel {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  padding-bottom: 20px;
+  padding-right: 4px; /* Scrollbar padding */
 }
 
-.coord-inputs {
+/* 卡片通用 */
+.card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.1em;
+  font-weight: 600;
+  color: var(--text-main);
+  margin-bottom: 20px;
+}
+
+.title-icon {
+  color: var(--primary);
+}
+
+/* 设置项通用 */
+.setting-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.setting-label {
+  font-size: 0.9em;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.setting-hint {
+  font-size: 0.75em;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.flex-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sub-setting {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
   padding: 12px;
-  background: var(--n-color-embedded, #f5f5f5);
-  border-radius: 6px;
+  background: var(--bg-body);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-light);
 }
 
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
+.sub-label {
+  font-size: 0.85em;
+  color: var(--text-main);
 }
 
-.blink {
-  animation: blink 1s infinite;
-  color: #e03050;
-  margin-right: 4px;
+.divider {
+  height: 1px;
+  background: var(--border-light);
+  margin: 16px 0;
+}
+
+/* 坐标输入区 */
+.coord-inputs {
+  margin-top: 12px;
+  padding: 16px;
+  background: var(--bg-body);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-light);
+}
+
+/* 动画 */
+.fade-in {
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 </style>

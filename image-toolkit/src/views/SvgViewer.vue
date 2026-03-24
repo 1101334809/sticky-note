@@ -8,14 +8,12 @@
 import { ref, computed, inject, watch, type Ref } from 'vue'
 import {
   NButton, NInput, NIcon, NGrid, NGridItem,
-  NEmpty, NColorPicker, NTooltip, NButtonGroup,
+  NColorPicker, NTooltip,
   useMessage,
 } from 'naive-ui'
 import {
   FolderOpenOutline,
   DocumentOutline,
-  GridOutline,
-  ListOutline,
   DownloadOutline,
   SearchOutline,
 } from '@vicons/ionicons5'
@@ -26,6 +24,9 @@ import type { ExportOptions } from '../components/ExportPngDialog.vue'
 import { useUndoStore } from '../stores/undo.store'
 import { useSettingsStore } from '../stores/settings.store'
 import { useAudio } from '../composables/useAudio'
+import SegmentedControl from '../components/ui/SegmentedControl.vue'
+import EmptyState from '../components/ui/EmptyState.vue'
+import GlassCard from '../components/ui/GlassCard.vue'
 
 interface SvgFile {
   name: string
@@ -43,6 +44,10 @@ const { playError, playComplete } = useAudio()
 const svgFiles = ref<SvgFile[]>([])
 const searchQuery = ref('')
 const viewMode = ref<'grid' | 'list'>('grid')
+const viewOptions = [
+  { label: '宫格', value: 'grid' },
+  { label: '列表', value: 'list' }
+]
 const fillColor = ref('#667eea')
 
 // ====== 预览弹窗状态 ======
@@ -291,9 +296,11 @@ async function downloadZip() {
 
         <NInput
           v-model:value="searchQuery"
-          placeholder="搜索 SVG 文件名…"
+          placeholder="搜索 SVG..."
           clearable
+          round
           size="small"
+          class="pill-search"
           style="width: 200px"
         >
           <template #prefix><NIcon><SearchOutline /></NIcon></template>
@@ -301,14 +308,12 @@ async function downloadZip() {
       </template>
 
       <template #right>
-        <NButtonGroup size="small">
-          <NButton :type="viewMode === 'grid' ? 'primary' : 'default'" @click="viewMode = 'grid'">
-            <template #icon><NIcon><GridOutline /></NIcon></template>
-          </NButton>
-          <NButton :type="viewMode === 'list' ? 'primary' : 'default'" @click="viewMode = 'list'">
-            <template #icon><NIcon><ListOutline /></NIcon></template>
-          </NButton>
-        </NButtonGroup>
+        <SegmentedControl 
+          v-model="viewMode" 
+          :options="viewOptions" 
+          size="small" 
+          style="margin-right: 8px"
+        />
 
         <NButton size="small" @click="applyColor" :disabled="!isLoaded" class="color-btn">
           <template #icon>
@@ -341,28 +346,34 @@ async function downloadZip() {
     <!-- 内容区 -->
     <div style="flex: 1; padding: 16px; overflow-y: auto">
       <!-- 空状态 -->
-      <div v-if="!isLoaded" style="display: flex; align-items: center; justify-content: center; height: 100%">
-        <div class="empty-zone">
-          <div style="font-size: 3em; margin-bottom: 16px">📂</div>
-          <p style="color: var(--text-secondary); font-size: 1.1em; margin-bottom: 16px">加载 SVG 文件</p>
-          <div style="display: flex; gap: 12px; justify-content: center">
-            <NButton @click="loadFiles" type="primary" size="medium">
-              <template #icon><NIcon><DocumentOutline /></NIcon></template>
-              选择文件
-            </NButton>
-            <NButton @click="loadFolder" size="medium">
-              <template #icon><NIcon><FolderOpenOutline /></NIcon></template>
-              选择文件夹
-            </NButton>
-          </div>
-          <p style="color: var(--text-muted); font-size: 0.85em; margin-top: 16px">或将 SVG 文件拖拽到此处</p>
-        </div>
+      <div v-if="!isLoaded" style="height: 100%">
+        <EmptyState
+          icon="📂"
+          title="加载 SVG 文件"
+          description="或将 SVG 文件拖拽到此处"
+        >
+          <template #action>
+            <div style="display: flex; gap: 12px; justify-content: center">
+              <NButton @click="loadFiles" type="primary" size="medium" class="btn-glow">
+                <template #icon><NIcon><DocumentOutline /></NIcon></template>
+                选择文件
+              </NButton>
+              <NButton @click="loadFolder" size="medium">
+                <template #icon><NIcon><FolderOpenOutline /></NIcon></template>
+                选择文件夹
+              </NButton>
+            </div>
+          </template>
+        </EmptyState>
       </div>
 
       <!-- 宫格视图 -->
-      <NGrid v-if="isLoaded && viewMode === 'grid'" :x-gap="12" :y-gap="12" cols="2 400:3 600:5 800:7 1000:9">
+      <NGrid v-if="isLoaded && viewMode === 'grid'" :x-gap="16" :y-gap="16" cols="2 400:3 600:4 800:5 1000:6">
         <NGridItem v-for="file in filteredFiles" :key="file.path">
-          <div
+          <GlassCard
+            hoverable
+            radius="md"
+            padding="16px 8px 10px"
             @click="toggleSelect(file.path)"
             class="svg-card"
             :class="{ selected: file.selected }"
@@ -376,13 +387,13 @@ async function downloadZip() {
             />
             <NTooltip>
               <template #trigger>
-                <div style="font-size: 0.7em; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap">
+                <div style="font-size: 0.7em; color: var(--text-secondary); padding: 0 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">
                   {{ file.name }}
                 </div>
               </template>
               {{ file.name }} ({{ formatSize(file.size) }})
             </NTooltip>
-          </div>
+          </GlassCard>
         </NGridItem>
       </NGrid>
 
@@ -398,7 +409,7 @@ async function downloadZip() {
           >
             <img :src="getSvgDataUri(file.content)" style="width: 32px; height: 32px; flex-shrink: 0" />
             <div style="flex: 1; min-width: 0">
-              <div style="color: var(--text-primary); font-size: 0.85em">{{ file.name }}</div>
+              <div style="color: var(--text-main); font-weight: 500; font-size: 0.85em">{{ file.name }}</div>
               <div style="color: var(--text-muted); font-size: 0.75em">{{ formatSize(file.size) }}</div>
             </div>
             <div v-if="file.selected" class="select-badge-inline">✓</div>
@@ -407,7 +418,11 @@ async function downloadZip() {
       </div>
 
       <!-- 无搜索结果 -->
-      <NEmpty v-if="isLoaded && filteredFiles.length === 0" description="没有匹配的 SVG 文件" style="margin-top: 60px" />
+      <EmptyState
+        v-if="isLoaded && filteredFiles.length === 0"
+        icon="🔍"
+        title="没有匹配的 SVG 文件"
+      />
     </div>
 
     <!-- 预览弹窗 -->
@@ -427,17 +442,6 @@ async function downloadZip() {
 </template>
 
 <style scoped>
-/* 空状态区 */
-.empty-zone {
-  border: 2px dashed var(--border-dashed);
-  border-radius: 16px;
-  padding: 48px;
-  text-align: center;
-  transition: all 0.3s;
-}
-.empty-zone:hover {
-  border-color: var(--accent);
-}
 
 /* SVG 卡片 */
 .svg-card {

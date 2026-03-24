@@ -14,6 +14,7 @@ import {
   NTooltip,
 } from 'naive-ui'
 import { FolderOpenOutline } from '@vicons/ionicons5'
+import SegmentedControl from './ui/SegmentedControl.vue'
 
 export interface WatermarkSettings {
   type: 'text' | 'image'
@@ -84,6 +85,11 @@ function applyPreset(preset: typeof positionPresets[0]) {
     positionY: preset.y,
   })
 }
+
+const typeOptions = [
+  { label: '文字水印', value: 'text' },
+  { label: '图片水印', value: 'image' },
+]
 </script>
 
 <template>
@@ -91,26 +97,13 @@ function applyPreset(preset: typeof positionPresets[0]) {
     
     <!-- 类型分段控制器 (Segmented Control) -->
     <div class="segment-control-wrapper">
-      <div class="segment-control">
-        <div 
-          class="segment-slider" 
-          :class="{ 'slider-right': settings.type === 'image' }"
-        ></div>
-        <div 
-          class="segment-item" 
-          :class="{ active: settings.type === 'text' }"
-          @click="update('type', 'text')"
-        >
-          <span class="segment-text">文字水印</span>
-        </div>
-        <div 
-          class="segment-item" 
-          :class="{ active: settings.type === 'image' }"
-          @click="update('type', 'image')"
-        >
-          <span class="segment-text">图片水印</span>
-        </div>
-      </div>
+      <SegmentedControl
+        :modelValue="settings.type"
+        :options="typeOptions"
+        @update:modelValue="(v: string | number) => update('type', v)"
+        block
+        size="large"
+      />
     </div>
 
     <!-- 基础内容组 -->
@@ -322,47 +315,6 @@ function applyPreset(preset: typeof positionPresets[0]) {
 /* === 分段控制器 (Apple Style Segmented Control) === */
 .segment-control-wrapper {
   margin-bottom: 24px;
-}
-.segment-control {
-  position: relative;
-  display: flex;
-  background-color: var(--bg-body, #f4f5f7);
-  border-radius: 8px;
-  padding: 3px;
-  box-shadow: inset 0 1px 3px rgba(0,0,0,0.06);
-}
-.segment-slider {
-  position: absolute;
-  top: 3px;
-  bottom: 3px;
-  left: 3px;
-  width: calc(50% - 3px);
-  background: #ffffff;
-  border-radius: 6px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.08), 0 1px 1px rgba(0,0,0,0.04);
-  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
-  z-index: 1;
-}
-.segment-slider.slider-right {
-  transform: translateX(100%);
-}
-.segment-item {
-  flex: 1;
-  text-align: center;
-  padding: 6px 0;
-  cursor: pointer;
-  position: relative;
-  z-index: 2;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-secondary, #666);
-  transition: color 0.2s;
-}
-.segment-item.active {
-  color: var(--text-primary, #111);
-}
-.segment-text {
-  user-select: none;
 }
 
 /* === 分组样式 === */

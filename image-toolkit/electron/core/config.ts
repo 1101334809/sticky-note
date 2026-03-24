@@ -37,6 +37,12 @@ export function registerConfigHandlers() {
     return config[key] ?? null
   })
 
+  // 同步获取设定，主要用于预加载脚本 (preload.ts) 防止白屏闪烁
+  ipcMain.on('config:getSync', (event, key: string) => {
+    const config = readConfig()
+    event.returnValue = config[key] ?? null
+  })
+
   ipcMain.handle('config:set', async (_event, key: string, value: any) => {
     const config = readConfig()
     config[key] = value

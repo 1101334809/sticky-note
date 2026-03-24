@@ -2,19 +2,19 @@
 /**
  * 格式转换视图 — 重构版
  *
- * 使用通用组件 FileList / Toolbar / OutputDirPicker
- * 状态管理通过 fileStore
- * T-018
+ * T-035, T-036, T-037
  */
 import { ref, inject, watch, type Ref } from 'vue'
 import { NButton, NIcon, NSelect, NSwitch, NInputNumber, NTooltip, useMessage, useDialog } from 'naive-ui'
-import { FolderOpenOutline, FolderOutline, LockClosedOutline, LockOpenOutline } from '@vicons/ionicons5'
+import { FolderOpenOutline, FolderOutline, LockClosedOutline, LockOpenOutline, ImagesOutline, SyncCircleOutline } from '@vicons/ionicons5'
 import FileList from '../components/FileList.vue'
-import Toolbar from '../components/Toolbar.vue'
 import OutputDirPicker from '../components/OutputDirPicker.vue'
 import { useFileStore } from '../stores/file.store'
 import { useUndoStore } from '../stores/undo.store'
 import { useSettingsStore } from '../stores/settings.store'
+import GlassCard from '../components/ui/GlassCard.vue'
+import EmptyState from '../components/ui/EmptyState.vue'
+import PillBadge from '../components/ui/PillBadge.vue'
 
 const message = useMessage()
 const dialog = useDialog()
@@ -29,16 +29,6 @@ const customWidth = ref<number | null>(null)
 const customHeight = ref<number | null>(null)
 const lockRatio = ref(true)
 
-const formatOptions = [
-  { label: 'WebP', value: 'webp' },
-  { label: 'PNG', value: 'png' },
-  { label: 'JPEG', value: 'jpeg' },
-  { label: 'AVIF', value: 'avif' },
-  { label: 'BMP', value: 'bmp' },
-  { label: 'ICO', value: 'ico' },
-  { label: 'TIFF', value: 'tiff' },
-]
-
 const sizeOptions = [
   { label: '保持原尺寸', value: '' },
   { label: 'Favicon 16×16', value: '16' },
@@ -51,12 +41,12 @@ const sizeOptions = [
 ]
 
 const formatCards = [
-  { key: 'webp', icon: '📄', title: 'WebP', desc: '高压缩率，现代Web首选' },
-  { key: 'png', icon: '🖼️', title: 'PNG', desc: '无损透明，适合图标' },
-  { key: 'jpeg', icon: '📸', title: 'JPEG', desc: '照片首选，兼容性最佳' },
-  { key: 'avif', icon: '⚡', title: 'AVIF', desc: '新一代格式，极致压缩' },
-  { key: 'ico', icon: '🎯', title: 'ICO', desc: '图标格式，多尺寸嵌入' },
-  { key: 'tiff', icon: '🎞️', title: 'TIFF', desc: '高质量，印刷用途' },
+  { key: 'webp', icon: '📄', title: 'WebP', desc: '高压缩率' },
+  { key: 'png', icon: '🖼️', title: 'PNG', desc: '无损透明' },
+  { key: 'jpeg', icon: '📸', title: 'JPEG', desc: '兼容最佳' },
+  { key: 'avif', icon: '⚡', title: 'AVIF', desc: '极致压缩' },
+  { key: 'ico', icon: '🎯', title: 'ICO', desc: '多尺寸图标' },
+  { key: 'tiff', icon: '🎞️', title: 'TIFF', desc: '高质量印刷' },
 ]
 
 // ====== 接收全局拖拽 ======
@@ -230,147 +220,362 @@ async function openOutputDir() {
 </script>
 
 <template>
-  <div style="height: 100%; display: flex; flex-direction: column; overflow: hidden">
-    <!-- 工具栏 -->
-    <Toolbar
-      :file-count="fileStore.fileCount"
-      :is-processing="fileStore.isProcessing"
-      @clear="handleClear"
-    >
-      <template #left>
-        <NButton @click="selectFiles" type="primary" size="small">
-          <template #icon><NIcon><FolderOpenOutline /></NIcon></template>
-          选择图片
-        </NButton>
-        <NButton @click="selectFolder" size="small">
-          <template #icon><NIcon><FolderOutline /></NIcon></template>
-          选择文件夹
-        </NButton>
+  <div class="convert-view">
+    <div class="layout-container">
+      
+      <!-- ================= 左侧 控制面板 ================= -->
+      <div class="left-panel">
+        <GlassCard radius="lg" padding="24px" class="control-card">
+          <div class="panel-header">
+            <NIcon size="24" class="header-icon"><SyncCircleOutline /></NIcon>
+            <h2 class="header-title">格式转换</h2>
+          </div>
 
-        <span style="color: var(--text-secondary); font-size: 0.85em">目标格式</span>
-        <NSelect v-model:value="targetFormat" :options="formatOptions" size="small" style="width: 120px" />
-        <NSelect v-model:value="presetSize" :options="sizeOptions" size="small" style="width: 150px" placeholder="尺寸预设" />
+          <!-- 目标格式联排选择器 T-035 -->
+          <div class="form-group">
+            <label class="form-label" style="display:flex; justify-content:space-between">
+              <span>目标格式</span>
+            </label>
+            <div class="format-grid">
+              <GlassCard
+                v-for="card in formatCards"
+                :key="card.key"
+                hoverable
+                radius="md"
+                padding="12px"
+                @click="targetFormat = card.key"
+                class="format-card"
+                :class="{ active: targetFormat === card.key }"
+              >
+                <div class="format-icon">{{ card.icon }}</div>
+                <div class="format-info">
+                  <div class="format-title">{{ card.title }}</div>
+                  <div class="format-desc">{{ card.desc }}</div>
+                </div>
+              </GlassCard>
+            </div>
+          </div>
 
-        <!-- 自定义宽高 T-039 -->
-        <NTooltip>
-          <template #trigger>
-            <NInputNumber
-              :value="customWidth"
-              @update:value="handleWidthChange"
-              size="small"
-              placeholder="宽"
-              style="width: 80px"
-              :min="1"
-              :max="4096"
-            />
-          </template>
-          自定义宽度 (px)
-        </NTooltip>
-        <NButton size="tiny" quaternary @click="lockRatio = !lockRatio">
-          <template #icon>
-            <NIcon>
-              <LockClosedOutline v-if="lockRatio" />
-              <LockOpenOutline v-else />
-            </NIcon>
-          </template>
-        </NButton>
-        <NTooltip>
-          <template #trigger>
-            <NInputNumber
-              :value="customHeight"
-              @update:value="handleHeightChange"
-              size="small"
-              placeholder="高"
-              style="width: 80px"
-              :min="1"
-              :max="4096"
-            />
-          </template>
-          自定义高度 (px)
-        </NTooltip>
+          <!-- 尺寸设置 -->
+          <div class="form-group">
+            <label class="form-label">调整尺寸配置</label>
+            <NSelect v-model:value="presetSize" :options="sizeOptions" placeholder="常用应用图标预设" />
+            <div class="custom-size-row">
+              <NTooltip>
+                <template #trigger>
+                  <NInputNumber
+                    :value="customWidth"
+                    @update:value="handleWidthChange"
+                    placeholder="W (px)"
+                    :min="1" :max="4096"
+                    style="flex: 1"
+                  />
+                </template>
+                自定义宽度
+              </NTooltip>
+              <NButton quaternary circle @click="lockRatio = !lockRatio" class="lock-btn">
+                <template #icon>
+                  <NIcon :color="lockRatio ? 'var(--primary)' : 'var(--text-muted)'">
+                    <LockClosedOutline v-if="lockRatio" />
+                    <LockOpenOutline v-else />
+                  </NIcon>
+                </template>
+              </NButton>
+              <NTooltip>
+                <template #trigger>
+                  <NInputNumber
+                    :value="customHeight"
+                    @update:value="handleHeightChange"
+                    placeholder="H (px)"
+                    :min="1" :max="4096"
+                    style="flex: 1"
+                  />
+                </template>
+                自定义高度
+              </NTooltip>
+            </div>
+          </div>
 
-        <span style="color: var(--text-secondary); font-size: 0.8em; margin-left: 8px">保留原文件</span>
-        <NSwitch
-          :value="settingsStore.keepOriginalFile"
-          @update:value="settingsStore.setKeepOriginalFile"
-          size="small"
-        />
+          <!-- 输出目录 -->
+          <div class="form-group">
+            <label class="form-label">输出目录</label>
+            <OutputDirPicker />
+            <div style="margin-top: 12px; display: flex; align-items: center; justify-content: space-between">
+              <span style="font-size: 0.85em; color: var(--text-secondary)">转换后保留原文件</span>
+              <NSwitch :value="settingsStore.keepOriginalFile" @update:value="settingsStore.setKeepOriginalFile" size="small" />
+            </div>
+          </div>
 
-        <OutputDirPicker />
-      </template>
+          <div class="spacer"></div>
 
-      <template #right>
-        <NButton
-          v-if="lastOutputDir"
-          size="small"
-          @click="openOutputDir"
-        >
-          <template #icon><NIcon><FolderOutline /></NIcon></template>
-          打开输出目录
-        </NButton>
+          <!-- 操作区 -->
+          <div class="action-footer">
+            <NButton
+              v-if="lastOutputDir"
+              block
+              secondary
+              @click="openOutputDir"
+              style="margin-bottom: 12px;"
+            >
+              <template #icon><NIcon><FolderOutline /></NIcon></template>
+              打开输出目录
+            </NButton>
 
-        <NButton
-          size="small"
-          type="primary"
-          @click="startConvert"
-          :disabled="!fileStore.hasFiles || fileStore.isProcessing"
-          :loading="fileStore.isProcessing"
-        >
-          🔄 开始转换
-        </NButton>
-      </template>
-    </Toolbar>
-
-    <!-- 内容区 -->
-    <div style="flex: 1; overflow-y: auto; display: flex; flex-direction: column">
-      <!-- 格式卡片 -->
-      <div v-if="fileStore.hasFiles" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; padding: 16px 16px 8px">
-        <div
-          v-for="card in formatCards"
-          :key="card.key"
-          @click="targetFormat = card.key"
-          class="format-card"
-          :class="{ active: targetFormat === card.key }"
-        >
-          <div style="color: var(--text-primary); font-size: 0.9em; font-weight: 600">{{ card.icon }} {{ card.title }}</div>
-          <div style="color: var(--text-muted); font-size: 0.75em; margin-top: 4px">{{ card.desc }}</div>
-        </div>
+            <NButton
+              type="primary"
+              block
+              size="large"
+              class="btn-glow"
+              @click="startConvert"
+              :disabled="!fileStore.hasFiles || fileStore.isProcessing"
+              :loading="fileStore.isProcessing"
+            >
+              <template #icon><NIcon><SyncCircleOutline /></NIcon></template>
+              转换为 {{ targetFormat.toUpperCase() }}
+            </NButton>
+          </div>
+        </GlassCard>
       </div>
 
-      <!-- 文件列表 -->
-      <FileList
-        :files="fileStore.files"
-        :show-progress="true"
-        empty-icon="🔄"
-        empty-text="点击选择图片文件"
-        @remove="handleRemoveFile"
-        @click-empty="selectFiles"
-      >
-        <template #emptyHint>
-          <p style="color: var(--text-muted); font-size: 0.8em; margin-top: 8px">
-            支持所有主流图片格式互转 · 批量处理
-          </p>
-        </template>
-      </FileList>
+      <!-- ================= 右侧 文件列表 ================= -->
+      <div class="right-panel">
+        <GlassCard radius="lg" padding="0" class="list-card" style="display: flex; flex-direction: column; overflow: hidden; height: 100%">
+          
+          <div class="list-header" v-if="fileStore.hasFiles">
+            <div style="display: flex; align-items: center; gap: 8px">
+              <div class="list-title">待处理文件 ({{ fileStore.fileCount }})</div>
+              <!-- T-037 队列状态 -->
+              <PillBadge v-if="fileStore.isProcessing" status="processing" label="转换中..." />
+            </div>
+            
+            <div class="list-actions">
+              <NButton text type="primary" size="small" @click="selectFiles" class="hover-lift">
+                <template #icon><NIcon><ImagesOutline /></NIcon></template>
+                添加文件
+              </NButton>
+              <NButton text type="primary" size="small" @click="selectFolder" style="margin-left: 12px" class="hover-lift">
+                <template #icon><NIcon><FolderOpenOutline /></NIcon></template>
+                添加文件夹
+              </NButton>
+              <NButton text type="error" size="small" @click="handleClear" style="margin-left: 16px" class="hover-lift">
+                清空队列
+              </NButton>
+            </div>
+          </div>
+
+          <div class="list-content">
+            <template v-if="fileStore.hasFiles">
+              <FileList
+                :files="fileStore.files"
+                :show-progress="true"
+                @remove="handleRemoveFile"
+              />
+            </template>
+
+            <!-- T-036: EmptyState -->
+            <EmptyState
+              v-else
+              icon="🔄"
+              title="图片格式转换"
+              description="支持主流图片格式互转，包括 WebP/AVIF 与生成多尺寸图标。直接拖拽文件到这里。"
+            >
+              <template #action>
+                <div style="display: flex; gap: 12px; justify-content: center">
+                  <NButton @click="selectFiles" type="primary" size="large" class="btn-glow">
+                    <template #icon><NIcon><FolderOpenOutline /></NIcon></template>
+                    选择图片
+                  </NButton>
+                  <NButton @click="selectFolder" size="large">
+                    <template #icon><NIcon><ImagesOutline /></NIcon></template>
+                    选择文件夹
+                  </NButton>
+                </div>
+              </template>
+            </EmptyState>
+          </div>
+        </GlassCard>
+      </div>
+      
     </div>
   </div>
 </template>
 
 <style scoped>
+.convert-view {
+  height: 100%;
+  padding: 12px 0;
+  box-sizing: border-box;
+}
+
+.layout-container {
+  display: flex;
+  height: 100%;
+  gap: 20px;
+}
+
+/* 左侧固定宽度 */
+.left-panel {
+  width: 340px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.control-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.header-icon {
+  color: var(--primary);
+}
+
+.header-title {
+  font-size: 1.25em;
+  font-weight: 700;
+  color: var(--text-main);
+  margin: 0;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-label {
+  display: block;
+  font-size: 0.9em;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+/* 格式联排网格 */
+.format-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
 .format-card {
-  padding: 14px;
-  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   cursor: pointer;
-  border: 1px solid var(--border-light);
-  background: var(--bg-card);
+  border-width: 2px !important;
+  border-color: transparent !important;
+  transition: all var(--duration-fast);
+}
+
+.format-card.active {
+  border-color: var(--accent) !important;
+  background: var(--accent-light) !important;
+  box-shadow: var(--shadow-sm);
+}
+
+.format-card.active .format-title {
+  color: var(--accent);
+}
+
+.format-icon {
+  font-size: 1.5em;
+  filter: grayscale(0.5);
   transition: all 0.2s;
 }
-.format-card:hover {
-  background: var(--bg-card-hover);
-  border-color: var(--accent);
+
+.format-card.active .format-icon {
+  filter: grayscale(0);
+  transform: scale(1.1);
 }
-.format-card.active {
-  border-color: var(--accent);
-  background: var(--accent-light);
+
+.format-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.format-title {
+  font-size: 0.9em;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.format-desc {
+  font-size: 0.7em;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 自定义尺寸行 */
+.custom-size-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.lock-btn {
+  background: var(--bg-body) !important;
+  transition: all 0.2s;
+}
+.lock-btn:hover {
+  background: var(--bg-card-hover) !important;
+}
+
+.spacer {
+  flex: 1;
+}
+.action-footer {
+  margin-top: 16px;
+}
+
+/* 右侧列表面板 */
+.right-panel {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-light);
+  background: rgba(255, 255, 255, 0.3);
+}
+
+[data-theme="dark"] .list-header {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.list-title {
+  font-size: 1.1em;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.list-actions {
+  display: flex;
+  align-items: center;
+}
+
+.list-content {
+  flex: 1;
+  overflow-y: auto;
+  position: relative;
+}
+
+.list-content :deep(.file-list) {
+  padding: 0;
 }
 </style>
