@@ -153,12 +153,12 @@ const statusText = computed(() => {
   transition: background 0.2s ease, box-shadow 0.2s ease;
 }
 .file-list-item:hover {
-  background: var(--bg-card-hover);
+  background: var(--primary-light);
   box-shadow: var(--shadow-sm);
 }
 .file-list-item.is-selected {
-  background: var(--accent-light);
-  border: 1px solid var(--accent);
+  background: var(--primary-light);
+  border: 1px solid var(--primary);
 }
 .file-list-item.is-success {
   border-left: 3px solid var(--success);
@@ -174,7 +174,7 @@ const statusText = computed(() => {
   right: 4px;
   width: 18px;
   height: 18px;
-  background: var(--accent);
+  background: var(--primary);
   color: #fff;
   border-radius: 50%;
   display: flex;
@@ -262,7 +262,7 @@ const statusText = computed(() => {
 .retry-btn {
   background: none;
   border: none;
-  color: var(--accent);
+  color: var(--primary);
   cursor: pointer;
   padding: 2px;
   display: flex;

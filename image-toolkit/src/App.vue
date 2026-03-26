@@ -331,8 +331,7 @@ body {
 .app-content {
   flex: 1;
   position: relative;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
   padding: 20px;
 }
 

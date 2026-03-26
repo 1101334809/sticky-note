@@ -425,6 +425,7 @@ async function openOutputDir() {
   height: 100%;
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
 }
 
 .panel-header {
@@ -475,13 +476,13 @@ async function openOutputDir() {
 }
 
 .format-card.active {
-  border-color: var(--accent) !important;
-  background: var(--accent-light) !important;
+  border-color: var(--primary) !important;
+  background: var(--primary-light) !important;
   box-shadow: var(--shadow-sm);
 }
 
 .format-card.active .format-title {
-  color: var(--accent);
+  color: var(--primary);
 }
 
 .format-icon {

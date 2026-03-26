@@ -446,6 +446,7 @@ function handlePreview(file: FileItem) {
   height: 100%;
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
 }
 
 .panel-header {
@@ -527,7 +528,7 @@ function handlePreview(file: FileItem) {
   transition: all 0.2s;
 }
 .output-dir-group:hover {
-  border-color: var(--accent);
+  border-color: var(--primary);
   background: var(--bg-card-hover);
 }
 
@@ -630,7 +631,7 @@ function handlePreview(file: FileItem) {
 
 .file-item:hover {
   background: var(--bg-card-hover);
-  border-color: var(--accent);
+  border-color: var(--primary);
   transform: translateY(-1px);
 }
 

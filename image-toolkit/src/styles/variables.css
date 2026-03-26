@@ -9,10 +9,12 @@
   --bg-body: #f5f7fa;
   --bg-sidebar: rgba(255, 255, 255, 0.7);
   --bg-card: rgba(255, 255, 255, 0.85);
-  --bg-card-hover: rgba(255, 255, 255, 0.95);
+  --bg-card-hover: rgba(240, 243, 255, 0.95);
   
   --primary: #5c6bc0;
   --primary-light: rgba(92, 107, 192, 0.1);
+  --accent: var(--primary);
+  --accent-light: var(--primary-light);
   --accent-gradient: linear-gradient(135deg, #667eea, #764ba2);
   
   --text-main: #2d3748;
@@ -66,9 +68,11 @@
   --bg-body: #0f111a;
   --bg-sidebar: rgba(26, 30, 41, 0.7);
   --bg-card: rgba(30, 35, 48, 0.6);
-  --bg-card-hover: rgba(30, 35, 48, 0.8);
+  --bg-card-hover: rgba(40, 48, 72, 0.85);
   
   --primary-light: rgba(92, 107, 192, 0.15);
+  --accent: var(--primary);
+  --accent-light: var(--primary-light);
   
   --text-main: #f7fafc;
   --text-primary: #f7fafc;

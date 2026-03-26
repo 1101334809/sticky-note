@@ -276,7 +276,7 @@ async function downloadZip() {
 </script>
 
 <template>
-  <div style="height: 100%; display: flex; flex-direction: column; overflow: hidden">
+  <div style="height: 100%; display: flex; flex-direction: column; overflow: hidden; min-height: 0">
     <!-- 工具栏 -->
     <Toolbar
       :file-count="fileCount"
@@ -344,7 +344,8 @@ async function downloadZip() {
     </Toolbar>
 
     <!-- 内容区 -->
-    <div style="flex: 1; padding: 16px; overflow-y: auto">
+    <div class="content-scroll">
+      <div style="padding: 16px;">
       <!-- 空状态 -->
       <div v-if="!isLoaded" style="height: 100%">
         <EmptyState
@@ -423,6 +424,7 @@ async function downloadZip() {
         icon="🔍"
         title="没有匹配的 SVG 文件"
       />
+      </div>
     </div>
 
     <!-- 预览弹窗 -->
@@ -443,6 +445,14 @@ async function downloadZip() {
 
 <style scoped>
 
+/* 内容滚动区 */
+.content-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+}
+
 /* SVG 卡片 */
 .svg-card {
   padding: 16px 8px 10px;
@@ -455,12 +465,13 @@ async function downloadZip() {
   position: relative;
 }
 .svg-card:hover {
-  background: var(--bg-card-hover);
+  background: var(--primary-light);
+  border-color: var(--primary);
   box-shadow: var(--shadow-sm);
 }
 .svg-card.selected {
-  border-color: var(--accent);
-  background: var(--accent-light);
+  border-color: var(--primary);
+  background: var(--primary-light);
 }
 
 /* SVG 列表项 */
@@ -474,10 +485,10 @@ async function downloadZip() {
   transition: background 0.15s;
 }
 .svg-list-item:hover {
-  background: var(--bg-card-hover);
+  background: var(--primary-light);
 }
 .svg-list-item.selected {
-  background: var(--accent-light);
+  background: var(--primary-light);
 }
 
 /* 选中角标 */
@@ -487,7 +498,7 @@ async function downloadZip() {
   right: 4px;
   width: 18px;
   height: 18px;
-  background: var(--accent);
+  background: var(--primary);
   color: #fff;
   border-radius: 50%;
   display: flex;
@@ -499,7 +510,7 @@ async function downloadZip() {
 .select-badge-inline {
   width: 20px;
   height: 20px;
-  background: var(--accent);
+  background: var(--primary);
   color: #fff;
   border-radius: 50%;
   display: flex;
